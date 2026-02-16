@@ -1,6 +1,6 @@
-# Module Contracts (A–R)
+# Module Contracts (A–T)
 
-This document defines **stable internal APIs** for modules A–R. These contracts exist to prevent rewrites later and enforce clean separation (UI vs Core vs Adapters).
+This document defines **stable internal APIs** for modules A–T. These contracts exist to prevent rewrites later and enforce clean separation (UI vs Core vs Adapters).
 
 ## Cross-cutting contract conventions
 
@@ -527,3 +527,64 @@ Examples: `job.progress`, `asset.imported`, `analysis.ready`, `export.completed`
 
 ### Persistence
 - `variant_graphs`, `variant_specs`, `variant_reports`
+
+---
+
+## Module S — UX platform (Phase 7)
+
+### Responsibilities
+- Provide shared UI design tokens and reusable component primitives.
+- Standardize interaction states and validation surfaces across screens.
+- Enforce accessibility baselines (keyboard focus, contrast, reduced motion).
+- Provide command-palette command registry and dispatch contracts.
+
+### Core API (UxPlatformService)
+- `get_tokens() -> Dictionary`
+- `resolve_component(component_id, variant, state) -> ComponentSpec`
+- `validate_accessibility(screen_id) -> AccessibilityReport`
+- `register_command(command_spec) -> void`
+- `run_command(command_id, args) -> CommandResult`
+
+### Errors
+- `E_UX_TOKEN_MISSING`
+- `E_COMMAND_NOT_FOUND`
+- `E_ACCESSIBILITY_VIOLATION`
+
+### Persistence
+- `ui_preferences`
+- `workspace_layouts`
+- `command_history`
+
+### Determinism / consistency
+- UI state transitions for deterministic flows (wizard/queue actions) must be stable and testable.
+- Command execution must be idempotent where specified.
+
+---
+
+## Module T — Productization (Phase 7)
+
+### Responsibilities
+- Provide packaging and release-manifest generation hooks.
+- Manage diagnostics export and troubleshooting runbook integration.
+- Define update-channel metadata stubs and rollback metadata contracts.
+
+### Core API (ProductizationService)
+- `run_packaging_dry_run(profile_id) -> PackageManifest`
+- `export_diagnostics(scope) -> DiagnosticsBundleInfo`
+- `get_release_channels() -> Array`
+- `set_release_channel(channel_id) -> ValidationResult`
+- `generate_support_report(context) -> SupportReport`
+
+### Errors
+- `E_PACKAGING_FAILED`
+- `E_DIAGNOSTICS_EXPORT_FAILED`
+- `E_CHANNEL_INVALID`
+
+### Persistence
+- `release_profiles`
+- `diagnostics_exports`
+- `support_reports`
+
+### Security / privacy rules
+- Diagnostics exports must pass redaction checks before writing.
+- No secret-bearing process environment values may be included in support bundles.

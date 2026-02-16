@@ -86,3 +86,4 @@ Minimum capabilities:
 - N/R automation (Phase 4)
 - L/M YouTube (Phase 5)
 - O/P/Q analytics/research/revenue (Phase 6)
+- S/T UX platform + productization (Phase 7)

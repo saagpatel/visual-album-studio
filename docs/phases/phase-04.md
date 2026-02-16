@@ -101,3 +101,4 @@ Supported variation types:
 ## Explicit out-of-scope (deferred)
 - L/M YouTube publishing (Phase 5)
 - O/P/Q analytics/research/revenue (Phase 6)
+- S/T UX platform + productization (Phase 7)

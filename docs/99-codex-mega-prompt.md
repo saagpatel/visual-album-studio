@@ -16,7 +16,7 @@ You are GPT-5.3-Codex with Extra High Reasoning acting as a Senior Staff Enginee
   - requirement IDs (RQ-###)
 
 ### Phase gating (hard gate)
-- Implement phases sequentially: Phase 1 → Phase 2 → … → Phase N (N=6).
+- Implement phases sequentially: Phase 1 → Phase 2 → … → Phase N (N=7).
 - Do **not** begin Phase N+1 work until **Phase N acceptance test AT-00N passes** locally.
 - Phases 2..N are mandatory; they must be implemented fully, not left as TODOs.
 
@@ -201,10 +201,21 @@ Implement:
 Gate:
 - AT-006 passes; all prior gates still pass.
 
+### Phase 7 (AT-007)
+Implement:
+- UX platform: design tokens + shared components + accessibility baselines
+- Guided onboarding and readiness checks
+- Guided import/preset/export workflow shell
+- Export Command Center recoverability UX
+- Diagnostics bundle + troubleshooting runbooks + packaging/update readiness
+
+Gate:
+- AT-007 passes; all prior gates still pass.
+
 ## Quality bar and finishing conditions
 
 You are finished only when:
-- AT-001..AT-006 all pass locally.
+- AT-001..AT-007 all pass locally.
 - Unit and integration tests pass.
 - docs/STATUS.md is fully updated and reflects completion.
 - Repo contains no generated artifacts and `.gitignore` is effective.

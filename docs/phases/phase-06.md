@@ -83,4 +83,4 @@
   - budget model + user-invoked operations
 
 ## Explicit out-of-scope
-- None (this is the final planned phase).
+- UX platform and productization enhancements (Phase 7).

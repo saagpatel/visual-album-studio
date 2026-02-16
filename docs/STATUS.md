@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Product-grade completion achieved (all phase gates + live closeout passed)
+**Current state:** Phase 7 approved; planning start pending (Phases 1-6 complete)
 **Last updated:** 2026-02-16
 
 ## Rebaseline Summary
@@ -15,17 +15,17 @@
 
 ## Phase Gate Status
 
-## Active Review Gate (Phase 1 Re-Gate)
-- Goal: Re-establish AT-001 on product path (`Godot core + adapters`) with deterministic checkpoints and bundle schema compliance.
-- Success metrics: `scripts/test/acceptance_phase_01.sh` passes using product-path execution; bundle files and checkpoint determinism assertions pass.
-- Constraints: no plaintext secrets, segment-based export, atomic bundle finalize, no business logic in UI layer.
-- Must in scope: SQLite migration execution, asset import/provenance gate, worker IPC analysis cache, deterministic mapping, Motion Poster render path, segment encode/concat/bundle, AT-001 gate script.
-- Deferred from this gate: full product-path migration for AT-002..AT-006 and live API validation closure.
-- Stop conditions: determinism mismatch on rerun checkpoints, segment resume corruption, provenance gate bypass for production export.
+## Active Review Gate (Phase 7)
+- Goal: Implement UX platform + productization scope while preserving all Phases 1-6 reliability and security guarantees.
+- Success metrics: `AT-007` passes and `AT-001..AT-006` remain green.
+- Constraints: no business logic in UI, no plaintext secrets, no regressions in segment-resume/export correctness.
+- Must in scope: design-system baseline, onboarding/readiness, guided workflow, command center, accessibility baseline, diagnostics redaction UX, packaging dry-run.
+- Deferred from this gate: any scope outside `docs/phases/phase-07.md` and `RQ-056..RQ-066`.
+- Stop conditions: export reliability regression, accessibility gate failures, diagnostics redaction leakage.
 - Verification commands:
   - `./scripts/test/unit.sh`
   - `./scripts/test/integration.sh`
-  - `./scripts/test/acceptance_phase_01.sh`
+  - `./scripts/test/acceptance_phase_07.sh`
 
 ### Stage A — Rebaseline and Hygiene Correction
 - [x] STATUS truth reset to product-grade re-gating
@@ -74,15 +74,24 @@
 - [x] Keyring-backed token lifecycle (no plaintext)
 - [x] Resumable upload persistence/restart recovery
 - [x] Migration `005_phase5.sql` implemented and tested
-- [x] AT-005 pass (product path, `PENDING_LIVE_VALIDATION`)
+- [x] AT-005 pass (product path; live validation cleared)
 - [x] AT-001..AT-004 regression pass
 
 ### Phase 6 Re-Gate (AT-006)
 - [x] Analytics/revenue/niche product-path implementations
 - [x] Retention/pruning/backup paths + privacy validation
 - [x] Migration `006_phase6.sql` implemented and tested
-- [x] AT-006 pass (product path, `PENDING_LIVE_VALIDATION`)
+- [x] AT-006 pass (product path; live validation cleared)
 - [x] AT-001..AT-005 regression pass
+
+### Phase 7 (AT-007)
+- [ ] UX platform and design-system implementation
+- [ ] Guided onboarding + workflow acceleration
+- [ ] Export Command Center UX and recovery surfaces
+- [ ] Accessibility baseline and command palette
+- [ ] Diagnostics/supportability UX + packaging readiness
+- [ ] AT-007 pass (product path)
+- [ ] AT-001..AT-006 regression pass
 
 ## Phase Evidence
 - Verification commands run:

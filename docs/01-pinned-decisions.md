@@ -68,7 +68,7 @@ This is treated as a product constraint.
   - Avoid “template spam” by designing visually distinct modes and enforcing batch variation guardrails (Phase 4).
   - Provide an "originality ledger" per export.
 
-## 6. Build vs Buy decisions (Modules A–R)
+## 6. Build vs Buy decisions (Modules A–T)
 
 These are the authoritative implementation choices and deferrals.
 
@@ -93,6 +93,8 @@ These are the authoritative implementation choices and deferrals.
 - **P Analytics dashboard:** Defer to Phase 6
 - **Q Revenue tracking:** Defer to Phase 6
 - **R Remix engine:** Defer to Phase 4
+- **S UX platform:** Defer to Phase 7 (design tokens, component system, accessibility, workflow shell)
+- **T Productization:** Defer to Phase 7 (packaging hooks, diagnostics UX, update-channel architecture stubs)
 
 ## 7. Phase list (authoritative)
 
@@ -102,6 +104,7 @@ These are the authoritative implementation choices and deferrals.
 4. Phase 4 — Automation: batch + remix + guardrails
 5. Phase 5 — Optional YouTube publishing + multi-channel
 6. Phase 6 — Analytics + niche + revenue
+7. Phase 7 — UX excellence + productization
 
 Stop/Go rule:
 - **STOP** if Phase 1 export pipeline cannot be made deterministic and resumable at segment boundaries.
@@ -120,9 +123,12 @@ Module DAG (high-level):
 - I → (N, R, L)
 - L → (M, P)
 - P → Q
+- C → S
+- (H, I, J, K, L, M, P, Q) → S
+- (I, J, L, P, S) → T
 
 Phase DAG:
-- Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
+- Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7
 
 ## 9. Locked Assumptions (chosen safe defaults)
 

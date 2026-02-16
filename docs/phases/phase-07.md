@@ -1,7 +1,4 @@
-# Phase 7 — UX Excellence, Productization, and Post-v1 Velocity (Draft)
-
-> Status: **Draft proposal only**.  
-> Governance: This phase is **post-v1** and **non-authoritative** until explicitly added to `docs/01-pinned-decisions.md` and `docs/20-phase-blueprint.md` as a gated phase.
+# Phase 7 — UX Excellence, Productization, and Post-v1 Velocity
 
 ## Objectives
 - Raise overall user experience quality from "powerful but technical" to "confident, fast, and approachable."
@@ -64,8 +61,8 @@
 - **J** Asset management UX and integrity workflows
 - **L/M** Publish UX hardening (safety and clarity improvements)
 - **P/Q** Analytics/revenue dashboard UX polish
-- **Proposed S (new)** UX platform module (design system + interaction framework)
-- **Proposed T (new)** Productization module (packaging/update hooks + health reporting)
+- **S** UX platform module (design system + interaction framework)
+- **T** Productization module (packaging/update hooks + health reporting)
 
 ## Deliverables (testable)
 
@@ -227,9 +224,7 @@ Definition of done:
 Definition of done:
 - A junior engineer can implement new UI screens using documented patterns only.
 
-## Proposed requirement set for Phase 7 (draft IDs)
-
-> Note: these IDs are proposed for post-v1 planning and are not yet part of `docs/03-requirements.md`.
+## Requirement set for Phase 7
 
 - **RQ-056** UX design system and component standardization.
 - **RQ-057** First-run onboarding and readiness checks.
@@ -271,7 +266,7 @@ Definition of done:
 
 ## Verification plan
 
-### Automated (proposed)
+### Automated
 - Unit:
   - **TS-011** design token validation and component state snapshots
   - **TS-012** workflow wizard state transitions
@@ -297,7 +292,7 @@ Definition of done:
   - keyring unavailable
   - publish quota exceeded
 
-## Proposed AT-007 scenarios
+## AT-007 scenarios
 - New-user first export completion from clean setup.
 - Recover from interrupted export via command center in <= 3 interactions.
 - Resolve missing asset relink and provenance warnings end-to-end.
@@ -360,10 +355,10 @@ Definition of done:
 ## Exit criteria
 - `AT-007` passes.
 - `AT-001..AT-006` pass without regressions.
-- Proposed `RQ-056..RQ-066` mapped to modules and tests.
+- `RQ-056..RQ-066` mapped to modules and tests.
 - Runbooks and user docs published and discoverable in-app.
 
-## Explicit out-of-scope (for this draft phase)
+## Explicit out-of-scope
 - New rendering modes or ML-heavy visual pipelines.
 - Additional external distribution platforms.
 - Multi-user cloud collaboration.

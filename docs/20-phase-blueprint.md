@@ -3,14 +3,7 @@
 This document is the master plan for phases, deliverables, and stop/go gates. Each phase has a dedicated detailed spec in `docs/phases/phase-XX.md`.
 
 ## Phase order (authoritative)
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
-
-## Post-v1 extension phases (non-authoritative drafts)
-- The authoritative gated chain ends at Phase 6 unless `docs/01-pinned-decisions.md` is explicitly amended.
-- Draft extension specs can be prepared for planning and estimation.
-- Current draft extension:
-  - **Phase 7 (draft):** UX excellence, productization, and post-v1 velocity
-  - Spec: `docs/phases/phase-07.md`
+Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7
 
 ## Stop/Go gates (hard)
 
@@ -70,6 +63,12 @@ A phase is done only when:
 - Modules: O, P, Q, J extensions
 - Gate: AT-006
 - Spec: `docs/phases/phase-06.md`
+
+### Phase 7 — UX excellence + productization
+- Objective: improve UX quality, accessibility, operator workflows, and release-readiness without regressing reliability/security constraints.
+- Modules: C, H, I, J, K, L, M, P, Q, S, T
+- Gate: AT-007
+- Spec: `docs/phases/phase-07.md`
 
 ## Cross-phase invariants (must never regress)
 - Export pipeline remains segment-based and crash-safe.

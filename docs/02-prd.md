@@ -36,6 +36,7 @@ VAS is a local-first desktop editor for creating looping, music-synced videos (1
 - **Export reliability:** 50 consecutive renders without manual intervention; deterministic rerender hash match for at least 10 test projects.
 - **Content safety:** every exported bundle includes machine-readable license provenance metadata for audio assets; no “unknown source” audio allowed in production exports.
 - **YouTube (later):** N successful resumable uploads with correct scheduled publish times and thumbnails, staying within daily quota.
+- **UX excellence (Phase 7):** first successful export on clean setup in <= 10 minutes; keyboard-only path available for critical workflows.
 
 ## Target users
 - **Beginner creator:** wants a guided path to create a single video reliably.
@@ -82,6 +83,16 @@ Success: automated publishing that respects quota and audit constraints.
 
 Success: local dashboards, no scraping, privacy-safe logs.
 
+### Journey E — UX and operations excellence (Phase 7)
+1. Launch onboarding assistant on a clean setup.
+2. Resolve readiness checks and import first project assets.
+3. Use guided workflow to select preset and queue export.
+4. Use command palette and keyboard shortcuts for frequent actions.
+5. Recover a simulated failed export from Export Command Center.
+6. Export diagnostics bundle and verify redaction.
+
+Success: first-time and power users can execute key workflows quickly with clear recovery/support paths.
+
 ## Constraints (hard)
 - **Local-first:** core workflows must work offline.
 - **Reliability:** export pipeline must be crash-safe, cancelable, and resumable.
@@ -111,6 +122,7 @@ Success: local dashboards, no scraping, privacy-safe logs.
 - Playlists automation (Phase 5).
 - Revenue tracking and niche tools (Phase 6).
 - Backup/restore and portability enhancements (Phase 6).
+- UX platform and productization enhancements (Phase 7).
 
 ## Stop/Go gates (phase boundaries)
 
@@ -126,7 +138,7 @@ Success: local dashboards, no scraping, privacy-safe logs.
 
 ### Later phase gates
 Each later phase requires:
-- Phase-specific acceptance tests pass (AT-002..AT-006).
+- Phase-specific acceptance tests pass (AT-002..AT-007).
 - No regression in Phase 1 reliability/determinism suite.
 
 ## Glossary (project-wide)

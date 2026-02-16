@@ -105,3 +105,4 @@
 
 ## Explicit out-of-scope (deferred)
 - O/P/Q analytics/research/revenue (Phase 6)
+- S/T UX platform + productization (Phase 7)

@@ -76,6 +76,7 @@ Phase gates are mandatory. Do not proceed to later phases until the current phas
 ./scripts/test/acceptance_phase_04.sh
 ./scripts/test/acceptance_phase_05.sh
 ./scripts/test/acceptance_phase_06.sh
+./scripts/test/acceptance_phase_07.sh
 ```
 
 Expected behavior:

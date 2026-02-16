@@ -20,7 +20,7 @@ See `docs/18-traceability-matrix.md` for the authoritative mapping.
 
 **Priority:** Must  
 **Modules:** C (Visual engine foundation), J (Asset library manager)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** AT-001, TS-004
 
 **Description**  
@@ -199,7 +199,7 @@ Segmentation reduces failure blast radius and enables practical resume semantics
 
 **Priority:** Must  
 **Modules:** J (Asset library manager)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-006, AT-001
 
 **Description**  
@@ -575,7 +575,7 @@ Reduces quota burn and supports ethical, policy-safe research workflows.
 
 **Priority:** Must  
 **Modules:** I (Render/export pipeline), C (Visual engine foundation), A (Audio import + analysis), H (Mapping + presets), K (Templates & presets (metadata + render))  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-005, AT-001
 
 **Description**  
@@ -592,7 +592,7 @@ Prevents drift and supports deterministic rerenderability and auditability.
 
 **Priority:** Must  
 **Modules:** I (Render/export pipeline)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** IT-002, TS-005, AT-001
 
 **Description**  
@@ -628,7 +628,7 @@ Determinism is a Phase 1 go/no-go criterion and must be continuously verified.
 
 **Priority:** Must  
 **Modules:** I (Render/export pipeline), A (Audio import + analysis), L (YouTube integration), P (Analytics dashboard), N (Batch generator), R (Remix engine)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-004, AT-001
 
 **Description**  
@@ -681,7 +681,7 @@ Security non-negotiable from Decision Pack.
 
 **Priority:** Must  
 **Modules:** C (Visual engine foundation), I (Render/export pipeline), L (YouTube integration), P (Analytics dashboard)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-004, AT-001, AT-005
 
 **Description**  
@@ -698,7 +698,7 @@ Prevents accidental leakage and improves supportability.
 
 **Priority:** Must  
 **Modules:** J (Asset library manager)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-008, AT-001
 
 **Description**  
@@ -715,7 +715,7 @@ Local-first persistent state must be upgrade-safe across versions.
 
 **Priority:** Must  
 **Modules:** I (Render/export pipeline), J (Asset library manager), H (Mapping + presets), K (Templates & presets (metadata + render))  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** IT-003, AT-001
 
 **Description**  
@@ -766,7 +766,7 @@ Thumbnails are required for publishing and must be reproducible.
 
 **Priority:** Must  
 **Modules:** J (Asset library manager), I (Render/export pipeline)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-006, AT-001
 
 **Description**  
@@ -801,7 +801,7 @@ Supports creator self-audits and helps mitigate inauthentic content risk.
 
 **Priority:** Must  
 **Modules:** I (Render/export pipeline)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** IT-002, AT-001
 
 **Description**  
@@ -835,7 +835,7 @@ Controls app size and licensing risk while enabling advanced features for opt-in
 
 **Priority:** Must  
 **Modules:** A (Audio import + analysis), I (Render/export pipeline), L (YouTube integration)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** IT-001, IT-003, AT-001
 
 **Description**  
@@ -852,7 +852,7 @@ Responsiveness and reliability require isolating heavy/fragile operations.
 
 **Priority:** Should  
 **Modules:** J (Asset library manager), I (Render/export pipeline)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-004, AT-001
 
 **Description**  
@@ -869,7 +869,7 @@ Reduces surprises, supports backups, and helps manage disk usage.
 
 **Priority:** Must  
 **Modules:** I (Render/export pipeline), K (Templates & presets (metadata + render)), C (Visual engine foundation)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-005, AT-001
 
 **Description**  
@@ -954,7 +954,7 @@ Local-first tools need reliable backups for creator workflows.
 
 **Priority:** Should  
 **Modules:** J (Asset library manager)  
-**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6  
+**Phase(s):** Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6, Phase 7  
 **Verification:** TS-001, AT-001
 
 **Description**  
@@ -967,3 +967,189 @@ Protects projects from broken links and silent corruption.
 - Integrity check reports missing/changed files and can re-verify hashes.
 - Relink workflow allows user to point to a new file and updates references safely.
 
+### RQ-056 — UX design system and component standardization
+
+**Priority:** Must  
+**Modules:** S (UX platform), C (Visual engine foundation)  
+**Phase(s):** Phase 7  
+**Verification:** TS-011, AT-007
+
+**Description**  
+The app must expose a shared UX design system with reusable components, semantic states, and stable design tokens used by all high-frequency screens.
+
+**Rationale**  
+A shared design system prevents inconsistent behavior, reduces onboarding friction, and accelerates safe UI changes.
+
+**Acceptance criteria**  
+- Core workflows use shared component primitives and tokenized styles.
+- UI states (loading/disabled/error/warning/success) follow a single interaction contract.
+
+### RQ-057 — First-run onboarding and readiness checks
+
+**Priority:** Must  
+**Modules:** S (UX platform), C (Visual engine foundation), I (Render/export pipeline), J (Asset library manager)  
+**Phase(s):** Phase 7  
+**Verification:** IT-008, AT-007
+
+**Description**  
+Provide first-run onboarding with environment/readiness checks and actionable remediation guidance for common setup issues.
+
+**Rationale**  
+New users should reach successful export quickly without hidden dependency failures.
+
+**Acceptance criteria**  
+- On first launch, readiness checks cover FFmpeg availability, output directory write access, and basic disk sanity.
+- Failed checks include clear remediation steps and a re-check action.
+
+### RQ-058 — Guided workflow for import/preset/export
+
+**Priority:** Must  
+**Modules:** S (UX platform), H (Mapping + presets), I (Render/export pipeline), J (Asset library manager), K (Templates & presets (metadata + render))  
+**Phase(s):** Phase 7  
+**Verification:** TS-012, IT-009, AT-007
+
+**Description**  
+Provide a guided workflow shell that unifies import, preset selection, metadata/provenance validation, and export queue submission.
+
+**Rationale**  
+A guided flow reduces navigation overhead and prevents missed production blockers.
+
+**Acceptance criteria**  
+- User can complete import -> preset -> validate -> export from one guided panel.
+- Validation surfaces include direct “fix now” actions where safe.
+
+### RQ-059 — Export command center with recoverability UX
+
+**Priority:** Must  
+**Modules:** S (UX platform), I (Render/export pipeline)  
+**Phase(s):** Phase 7  
+**Verification:** IT-009, AT-007
+
+**Description**  
+Provide a dedicated export operations UI for queue visibility, segment-level progress, and guided recovery for failed/interrupted jobs.
+
+**Rationale**  
+Operational clarity is critical for long-running exports and reliability trust.
+
+**Acceptance criteria**  
+- Export jobs expose queued/running/completed/failed states with actionable controls.
+- Recoverable failures offer explicit resume/retry/cleanup actions.
+
+### RQ-060 — Asset/provenance health and relink wizard UX
+
+**Priority:** Should  
+**Modules:** S (UX platform), J (Asset library manager), I (Render/export pipeline)  
+**Phase(s):** Phase 7  
+**Verification:** IT-010, AT-007
+
+**Description**  
+Provide user-facing health indicators and a guided relink/provenance remediation workflow for production readiness.
+
+**Rationale**  
+Integrity and provenance issues are common blockers and need explicit UX support.
+
+**Acceptance criteria**  
+- Assets show health badges for integrity and provenance completeness.
+- Relink workflow updates references safely and revalidates asset integrity.
+
+### RQ-061 — Preset browser/diff/migration UX
+
+**Priority:** Should  
+**Modules:** S (UX platform), H (Mapping + presets), K (Templates & presets (metadata + render))  
+**Phase(s):** Phase 7  
+**Verification:** IT-011, AT-007
+
+**Description**  
+Provide a searchable preset browser with side-by-side diff and explicit migration guidance across schema versions.
+
+**Rationale**  
+Preset governance is safer when users can inspect differences and migration impacts.
+
+**Acceptance criteria**  
+- Presets can be filtered/sorted by mode and tags.
+- Migration warnings are shown before applying schema transitions.
+
+### RQ-062 — Accessibility baseline (keyboard/contrast/reduced motion)
+
+**Priority:** Must  
+**Modules:** S (UX platform), C (Visual engine foundation)  
+**Phase(s):** Phase 7  
+**Verification:** TS-014, IT-012, AT-007
+
+**Description**  
+Critical workflows must meet baseline accessibility standards for keyboard operation, contrast, focus behavior, and reduced-motion preferences.
+
+**Rationale**  
+Accessibility is required for product-quality usability and operational safety.
+
+**Acceptance criteria**  
+- Critical flows are completable by keyboard only with visible focus indicators.
+- Reduced-motion preference disables non-essential UI motion.
+
+### RQ-063 — Command palette and productivity shortcuts
+
+**Priority:** Should  
+**Modules:** S (UX platform)  
+**Phase(s):** Phase 7  
+**Verification:** TS-013, AT-007
+
+**Description**  
+Provide a global command palette with searchable actions and keyboard shortcuts for high-frequency workflows.
+
+**Rationale**  
+Power users require fast invocation patterns and reduced click-paths.
+
+**Acceptance criteria**  
+- Command palette includes top operational actions (new project, import, export, resume, diagnostics).
+- Command dispatch is deterministic and auditable in local command history.
+
+### RQ-064 — Diagnostics export and in-app troubleshooting runbooks
+
+**Priority:** Must  
+**Modules:** T (Productization), S (UX platform), I (Render/export pipeline), L (YouTube integration), P (Analytics dashboard)  
+**Phase(s):** Phase 7  
+**Verification:** TS-015, AT-007
+
+**Description**  
+Provide one-click diagnostics export with redaction and in-app troubleshooting runbooks linked to common failure modes.
+
+**Rationale**  
+Supportability depends on fast, privacy-safe diagnostics and guided remediation.
+
+**Acceptance criteria**  
+- Diagnostics bundle excludes secrets/tokens and validates against support schema.
+- Runbooks are directly accessible from relevant error states.
+
+### RQ-065 — Packaging/update readiness architecture
+
+**Priority:** Should  
+**Modules:** T (Productization), I (Render/export pipeline), J (Asset library manager)  
+**Phase(s):** Phase 7  
+**Verification:** TS-016, AT-007
+
+**Description**  
+Provide packaging dry-run and update-channel metadata architecture so release operations can be enabled without core refactors.
+
+**Rationale**  
+Productization requires deterministic packaging outputs and controlled update readiness.
+
+**Acceptance criteria**  
+- Packaging dry-run emits deterministic manifest with toolchain and artifact metadata.
+- Release channels (stable/beta/dev) and rollback metadata are represented in local config/state.
+
+### RQ-066 — UI responsiveness and performance instrumentation
+
+**Priority:** Should  
+**Modules:** S (UX platform), C (Visual engine foundation), I (Render/export pipeline)  
+**Phase(s):** Phase 7  
+**Verification:** IT-012, AT-007
+
+**Description**  
+Instrument and enforce responsiveness targets for core editor interactions and project load/open paths.
+
+**Rationale**  
+Reliable UX requires measurable latency budgets and visibility into regressions.
+
+**Acceptance criteria**  
+- Interaction timings are captured for critical workflows and stored locally for diagnostics.
+- p95 interaction latency targets are defined and verified in Phase 7 acceptance.

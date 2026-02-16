@@ -23,6 +23,8 @@ This document describes the full-system architecture of Visual Album Studio (VAS
 │  - (Phase 3) Mixer UI               - ExportService (I)                      │
 │  - (Phase 5) Publish UI             - PublishService (L/M)                   │
 │  - (Phase 6) Analytics UI           - AnalyticsService (P/Q/O)               │
+│  - (Phase 7) UX Ops UI              - UxPlatformService (S)                  │
+│                                      - ProductizationService (T)              │
 │                                                                              │
 │  Visual Modes (render graph)         JobQueueService (persistent)            │
 │  - Motion Poster (G)                 - Jobs + progress + cancel/resume        │

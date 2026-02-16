@@ -1,6 +1,6 @@
 # Dependency Graph (Modules + Phases)
 
-This doc provides the authoritative dependency DAG for modules A–R and the phase sequencing dependencies.
+This doc provides the authoritative dependency DAG for modules A–T and the phase sequencing dependencies.
 
 ## Module DAG (text)
 
@@ -14,6 +14,8 @@ This doc provides the authoritative dependency DAG for modules A–R and the pha
 - I (Export pipeline) → (N, R, L)
 - L (YouTube integration) → (M, P)
 - P (Analytics) → Q (Revenue)
+- (C, H, I, J, K, L, M, P, Q) → S (UX platform)
+- (I, J, L, P, S) → T (Productization)
 
 ## Mermaid DAG (modules)
 
@@ -44,6 +46,20 @@ graph TD
   L --> M[M Multi-channel]
   L --> P[P Analytics]
   P --> Q[Q Revenue]
+  C --> S[S UX platform]
+  H --> S
+  I --> S
+  J --> S
+  K --> S
+  L --> S
+  M --> S
+  P --> S
+  Q --> S
+  I --> T[T Productization]
+  J --> T
+  L --> T
+  P --> T
+  S --> T
   O[O Niche analyzer] --> K
   L --> O
 ```
@@ -52,7 +68,7 @@ graph TD
 
 ```mermaid
 graph LR
-  P1[Phase 1] --> P2[Phase 2] --> P3[Phase 3] --> P4[Phase 4] --> P5[Phase 5] --> P6[Phase 6]
+  P1[Phase 1] --> P2[Phase 2] --> P3[Phase 3] --> P4[Phase 4] --> P5[Phase 5] --> P6[Phase 6] --> P7[Phase 7]
 ```
 
 ## Critical path summary (what blocks everything)
@@ -70,6 +86,7 @@ The project’s critical path is the export pipeline and everything it depends o
    - Phase 4 automation (N/R)
    - Phase 5 YouTube (L/M)
    - Phase 6 analytics (O/P/Q)
+   - Phase 7 UX/productization (S/T)
 
 ## Phase dependencies (explicit)
 
@@ -83,3 +100,5 @@ The project’s critical path is the export pipeline and everything it depends o
   - Stable bundles and provenance outputs (Phase 1–4)
 - Phase 6 depends on:
   - OAuth + channel bindings (Phase 5) and stable schema (Phase 1)
+- Phase 7 depends on:
+  - Stable outputs from all prior phases and finalized supportability surfaces (Phase 1-6)

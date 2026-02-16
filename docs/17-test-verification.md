@@ -14,6 +14,8 @@ This document defines the verification strategy for every phase, including unit/
   - job state machine
   - quota calculator
   - variant distance metric
+  - accessibility and UX workflow state machines
+  - diagnostics redaction and packaging manifest generation
 
 ### Integration tests (IT-###)
 - Exercise adapters and process boundaries.
@@ -24,10 +26,13 @@ This document defines the verification strategy for every phase, including unit/
   - Secure storage helper end-to-end
   - YouTube upload client against mock server (Phase 5)
   - Analytics ingestion against mock API (Phase 6)
+  - onboarding and export operations UX integration (Phase 7)
+  - diagnostics and supportability flows (Phase 7)
 
 ### Acceptance tests (AT-###)
 - End-to-end phase gates.
 - Must pass before proceeding to the next phase.
+- Includes AT-007 for UX and productization gate coverage.
 
 ## Golden fixtures
 
@@ -59,6 +64,12 @@ Each golden project includes:
 - TS-008 SQLite migration runner
 - TS-009 Keyring CLI wrapper API
 - TS-010 Quota calculator + throttling rules
+- TS-011 UX token/component state validation
+- TS-012 Guided workflow state transitions
+- TS-013 Command palette dispatch and history
+- TS-014 Accessibility keyboard/focus/contrast checks
+- TS-015 Diagnostics redaction + support bundle schema
+- TS-016 Packaging manifest determinism
 
 ### Integration (IT)
 - IT-001 Python analysis worker IPC + caching
@@ -68,6 +79,11 @@ Each golden project includes:
 - IT-005 Template rendering (metadata + typography vars)
 - IT-006 Resumable upload client (mock server)
 - IT-007 Analytics/Reporting ingestion (mock API + DB storage)
+- IT-008 First-run onboarding path on clean environment
+- IT-009 Export command center recoverability UX
+- IT-010 Asset relink + provenance remediation flow
+- IT-011 Preset migration UX with mixed schema versions
+- IT-012 Accessibility smoke path across critical workflows
 
 ### Acceptance (AT)
 - AT-001 Phase 1 end-to-end bundle (determinism + resume)
@@ -76,6 +92,7 @@ Each golden project includes:
 - AT-004 Phase 4 batch + remix guardrails
 - AT-005 Phase 5 YouTube pipeline (OAuth + resumable + quota)
 - AT-006 Phase 6 analytics/revenue/niche (official APIs only + privacy)
+- AT-007 Phase 7 UX/productization (onboarding + accessibility + supportability)
 
 ## Commands (required)
 
@@ -91,6 +108,7 @@ The implementation must provide these scripts:
 ./scripts/test/acceptance_phase_04.sh
 ./scripts/test/acceptance_phase_05.sh
 ./scripts/test/acceptance_phase_06.sh
+./scripts/test/acceptance_phase_07.sh
 ```
 
 ## Phase-by-phase verification details
@@ -150,6 +168,15 @@ Must verify:
 - Niche analyzer quota-aware
 - No scraping of YouTube Studio
 - Privacy tests pass (no tokens/PII in logs/diagnostics)
+
+### Phase 7 (AT-007)
+Must verify:
+- Onboarding/readiness flow guides first successful export path.
+- Export command center provides actionable failure/recovery UX.
+- Keyboard-only critical workflow path is complete and free of traps.
+- Accessibility checks pass for focus order and contrast policy.
+- Diagnostics export remains redacted and support-package schema valid.
+- Packaging dry-run emits deterministic manifest output.
 
 ## Manual runbooks (required for release confidence)
 In addition to automated tests, maintain runbooks:
