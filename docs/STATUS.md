@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Phase 7 approved; planning start pending (Phases 1-6 complete)
+**Current state:** Phase 7 complete and capstone audit complete on product paths (pending merge to main)
 **Last updated:** 2026-02-16
 
 ## Rebaseline Summary
@@ -85,13 +85,13 @@
 - [x] AT-001..AT-005 regression pass
 
 ### Phase 7 (AT-007)
-- [ ] UX platform and design-system implementation
-- [ ] Guided onboarding + workflow acceleration
-- [ ] Export Command Center UX and recovery surfaces
-- [ ] Accessibility baseline and command palette
-- [ ] Diagnostics/supportability UX + packaging readiness
-- [ ] AT-007 pass (product path)
-- [ ] AT-001..AT-006 regression pass
+- [x] UX platform and design-system implementation
+- [x] Guided onboarding + workflow acceleration
+- [x] Export Command Center UX and recovery surfaces
+- [x] Accessibility baseline and command palette
+- [x] Diagnostics/supportability UX + packaging readiness
+- [x] AT-007 pass (product path)
+- [x] AT-001..AT-006 regression pass
 
 ## Phase Evidence
 - Verification commands run:
@@ -103,6 +103,12 @@
   - `./scripts/test/acceptance_phase_04.sh`
   - `./scripts/test/acceptance_phase_05.sh`
   - `./scripts/test/acceptance_phase_06.sh`
+  - `./scripts/test/acceptance_phase_07.sh`
+  - `./scripts/test/determinism_rerun.sh`
+  - `./scripts/test/reliability_longrun.sh`
+  - `./scripts/test/security_audit.sh`
+  - `./scripts/test/repo_hygiene_audit.sh`
+  - `./scripts/test/capstone_audit.sh`
 - Product-path logs:
   - `out/logs/acceptance_phase_01_product.log`
   - `out/logs/acceptance_phase_02_product.log`
@@ -110,6 +116,12 @@
   - `out/logs/acceptance_phase_04_product.log`
   - `out/logs/acceptance_phase_05_product.log`
   - `out/logs/acceptance_phase_06_product.log`
+  - `out/logs/acceptance_phase_07_product.log`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
+  - `out/logs/capstone_baseline/determinism_rerun.log`
+  - `out/logs/capstone_baseline/reliability_longrun.log`
 - Pinned toolchain verification:
   - `PATH="/Users/d/Projects/visual-album-studio/out/tools/godot44/bin:$PATH" ./scripts/test/unit.sh`
   - `PATH="/Users/d/Projects/visual-album-studio/out/tools/godot44/bin:$PATH" ./scripts/test/integration.sh`
@@ -137,6 +149,7 @@
 - Cleared on 2026-02-16 after successful live matrix execution for Phase 5 and Phase 6.
 - Phase 5 report summary: `pass=2`, `fail=0`, `skip=1` (`youtube_resumable_upload` skipped because `VAS_YT_TEST_VIDEO_PATH` was unset).
 - Phase 6 report summary: `pass=2`, `fail=0`, `skip=1` (`youtube_revenue_metric` skipped with `403`, allowed by matrix policy).
+- Capstone rerun note: `./scripts/test/capstone_audit.sh` executed `live_closeout.sh` in pending-prerequisites mode due missing local env vars on that run; this does not reopen Phase 5/6 because live validation was already cleared above.
 
 ## Risk Closure Updates
 - Closed: branch hygiene cleanup complete; local branches reduced to `main` only.

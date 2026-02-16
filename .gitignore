@@ -45,3 +45,6 @@ coverage/**
 
 # Python packaging artifacts
 worker/*.egg-info/**
+
+# Local audit workspace
+.codex_audit/**

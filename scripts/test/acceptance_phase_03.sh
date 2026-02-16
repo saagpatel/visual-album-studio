@@ -10,9 +10,9 @@ mkdir -p out/logs
 
 PRODUCT_LOG="out/logs/acceptance_phase_03_product.log"
 if command -v godot >/dev/null 2>&1; then
-  VAS_REPO_ROOT="$ROOT_DIR" godot --headless --path app --script res://tests/phase3_acceptance.gd | tee "$PRODUCT_LOG"
+  VAS_REPO_ROOT="$ROOT_DIR" godot --headless --path app --script res://tests/phase3_acceptance.gd 2>&1 | tee "$PRODUCT_LOG"
 elif command -v godot4 >/dev/null 2>&1; then
-  VAS_REPO_ROOT="$ROOT_DIR" godot4 --headless --path app --script res://tests/phase3_acceptance.gd | tee "$PRODUCT_LOG"
+  VAS_REPO_ROOT="$ROOT_DIR" godot4 --headless --path app --script res://tests/phase3_acceptance.gd 2>&1 | tee "$PRODUCT_LOG"
 else
   echo "ERROR: Godot executable not found; product-path AT-003 cannot run (source: docs/00-readme.md, docs/phases/phase-03.md)" >&2
   exit 1
