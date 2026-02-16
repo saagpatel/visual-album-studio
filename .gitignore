@@ -17,6 +17,8 @@ tools/ffmpeg/**
 worker/.venv/**
 worker/**/__pycache__/**
 worker/.pytest_cache/**
+**/__pycache__/**
+.pytest_cache/**
 
 # ML models and downloads
 models/**
