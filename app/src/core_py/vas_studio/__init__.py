@@ -13,7 +13,14 @@ from .mixer import MixerService
 from .modes import LANDSCAPE_PRESETS, PARTICLE_PRESETS, PHOTO_PRESETS, ModePreset
 from .phase1 import Phase1Runtime
 from .photo_animator import ModelManager, PhotoAnimator
+from .productization import (
+    DiagnosticsBundleInfo,
+    PackageManifest,
+    ProductizationService,
+    SupportReport,
+)
 from .registry import ParameterDef, ParameterRegistry
+from .ux_platform import AccessibilityReport, CommandResult, UxPlatformService, UxTokenSet
 from .youtube_publish import ChannelBindingGuard, QuotaBudget, ResumableUploadStore, UploadSession, pkce_pair
 
 __all__ = [
@@ -33,16 +40,24 @@ __all__ = [
     "ModePreset",
     "ModelManager",
     "NicheNotebook",
+    "PackageManifest",
     "PARTICLE_PRESETS",
     "ParameterDef",
     "ParameterRegistry",
     "Phase1Runtime",
     "PHOTO_PRESETS",
     "PhotoAnimator",
+    "ProductizationService",
     "QuotaBudget",
     "RemixEngine",
     "ResumableUploadStore",
+    "SupportReport",
+    "DiagnosticsBundleInfo",
     "UploadSession",
+    "UxPlatformService",
+    "UxTokenSet",
+    "AccessibilityReport",
+    "CommandResult",
     "VasError",
     "VasPaths",
     "VariantSpec",
