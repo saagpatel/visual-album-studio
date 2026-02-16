@@ -112,3 +112,4 @@
 - ASM-202: Final 100% completion requires all `PENDING_LIVE_VALIDATION` tags to be cleared.
 - ASM-203: No new product requirements are introduced beyond `docs/**`.
 - ASM-204: Continuous execution proceeds phase-by-phase, with blocker-aware parallelization inside phase boundaries only.
+- ASM-205: Local product-path verification in this environment used `Godot v4.6` (Homebrew) for headless runs; pinned policy remains `4.4.x` in `tools/versions.json`, so release signing should re-run gates on the pinned build.
