@@ -101,10 +101,36 @@
   - `out/logs/acceptance_phase_04_product.log`
   - `out/logs/acceptance_phase_05_product.log`
   - `out/logs/acceptance_phase_06_product.log`
+- Pinned toolchain verification:
+  - `PATH="/Users/d/Projects/visual-album-studio/out/tools/godot44/bin:$PATH" ./scripts/test/unit.sh`
+  - `PATH="/Users/d/Projects/visual-album-studio/out/tools/godot44/bin:$PATH" ./scripts/test/integration.sh`
+  - `PATH="/Users/d/Projects/visual-album-studio/out/tools/godot44/bin:$PATH" ./scripts/test/acceptance_phase_01.sh` … `acceptance_phase_06.sh`
+  - Result: all passed on `Godot v4.4.stable.official.4c311cbee`
+
+## Live Validation Automation
+- Added executable live validation scripts:
+  - `scripts/test/live_phase_05.sh`
+  - `scripts/test/live_phase_06.sh`
+  - `scripts/test/live_closeout.sh`
+  - `scripts/test/live_validation.py`
+- Latest run results:
+  - `./scripts/test/live_phase_05.sh` => pending (exit 2)
+  - `./scripts/test/live_phase_06.sh` => pending (exit 2)
+  - `./scripts/test/live_closeout.sh` => pending (exit 2)
+- Evidence files:
+  - `out/logs/live_phase_05_report.json`
+  - `out/logs/live_phase_06_report.json`
+  - `out/logs/live_phase_05.log`
+  - `out/logs/live_phase_06.log`
 
 ## Pending Live Validation
-- `PENDING_LIVE_VALIDATION`: Phase 5 live API validation matrix (OAuth browser flow against live provider, resumable upload interruption/recovery against live endpoint).
-- `PENDING_LIVE_VALIDATION`: Phase 6 live API validation matrix (official analytics/revenue pulls against live endpoints and quota behavior).
+- `PENDING_LIVE_VALIDATION`: Phase 5 live API validation matrix remains blocked by missing `VAS_YT_CLIENT_ID`, `VAS_YT_CLIENT_SECRET`, `VAS_YT_REFRESH_TOKEN`.
+- `PENDING_LIVE_VALIDATION`: Phase 6 live API validation matrix remains blocked by missing `VAS_YT_CLIENT_ID`, `VAS_YT_CLIENT_SECRET`, `VAS_YT_REFRESH_TOKEN`.
+
+## Risk Closure Updates
+- Closed: branch hygiene cleanup complete; local branches reduced to `main` only.
+- Closed: pinned Godot `4.4.x` gate rerun completed successfully.
+- Open (credential blocker only): live provider validation for Phase 5/6.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
@@ -112,4 +138,3 @@
 - ASM-202: Final 100% completion requires all `PENDING_LIVE_VALIDATION` tags to be cleared.
 - ASM-203: No new product requirements are introduced beyond `docs/**`.
 - ASM-204: Continuous execution proceeds phase-by-phase, with blocker-aware parallelization inside phase boundaries only.
-- ASM-205: Local product-path verification in this environment used `Godot v4.6` (Homebrew) for headless runs; pinned policy remains `4.4.x` in `tools/versions.json`, so release signing should re-run gates on the pinned build.
