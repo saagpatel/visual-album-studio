@@ -1,0 +1,12 @@
+{
+  "mode_id": "motion_poster",
+  "schema_version": 1,
+  "presets": [
+    {"id": "mp_preset_01", "name": "Noir Pulse", "seed": 101, "overrides": {"mp.motion.float_amp": 8, "mp.beat.pulse_amount": 0.7}},
+    {"id": "mp_preset_02", "name": "Amber Drift", "seed": 102, "overrides": {"mp.motion.float_amp": 24, "mp.beat.pulse_amount": 0.3}},
+    {"id": "mp_preset_03", "name": "Neon Grid", "seed": 103, "overrides": {"mp.motion.zoom_amp": 0.12, "mp.beat.glow_amount": 0.8}},
+    {"id": "mp_preset_04", "name": "Paper Calm", "seed": 104, "overrides": {"mp.motion.noise_amount": 0.05, "mp.layout.art_scale": 0.8}},
+    {"id": "mp_preset_05", "name": "Mono Strike", "seed": 105, "overrides": {"mp.beat.shake_amount": 6.0, "mp.motion.rotation_wobble_deg": 1.2}},
+    {"id": "mp_preset_06", "name": "Vapor Bloom", "seed": 106, "overrides": {"mp.color.grade_amount": 0.9, "mp.beat.glow_amount": 0.95}}
+  ]
+}

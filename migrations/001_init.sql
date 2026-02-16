@@ -1,0 +1,450 @@
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version     INTEGER PRIMARY KEY,
+  name        TEXT NOT NULL,
+  checksum    TEXT NOT NULL,
+  applied_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app_kv (
+  key         TEXT PRIMARY KEY,
+  value_json  TEXT NOT NULL,
+  updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS assets (
+  id              TEXT PRIMARY KEY,
+  kind            TEXT NOT NULL CHECK (kind IN ('audio','image','video','font','model','other')),
+  sha256          TEXT NOT NULL,
+  size_bytes      INTEGER NOT NULL,
+  original_path   TEXT,
+  library_relpath TEXT NOT NULL,
+  mime_type       TEXT,
+  created_at      INTEGER NOT NULL,
+  imported_at     INTEGER NOT NULL,
+  last_verified_at INTEGER,
+  duration_ms     INTEGER,
+  sample_rate_hz  INTEGER,
+  channels        INTEGER,
+  width           INTEGER,
+  height          INTEGER,
+  metadata_json   TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_assets_sha256_kind ON assets(sha256, kind);
+CREATE INDEX IF NOT EXISTS idx_assets_kind ON assets(kind);
+
+CREATE TABLE IF NOT EXISTS asset_license (
+  asset_id        TEXT PRIMARY KEY REFERENCES assets(id) ON DELETE CASCADE,
+  source_type     TEXT NOT NULL CHECK (source_type IN ('original','licensed_pack','youtube_audio_library','creative_commons','commissioned','unknown')),
+  license_name    TEXT,
+  license_url     TEXT,
+  attribution_text TEXT,
+  proof_relpath   TEXT,
+  content_id_vendor TEXT,
+  notes           TEXT,
+  is_production_allowed INTEGER NOT NULL DEFAULT 0,
+  updated_at      INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS asset_tags (
+  asset_id    TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  tag_id      TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (asset_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS asset_usage (
+  asset_id      TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  project_id    TEXT,
+  export_id     TEXT,
+  last_used_at  INTEGER NOT NULL,
+  PRIMARY KEY (asset_id, project_id, export_id)
+);
+
+CREATE TABLE IF NOT EXISTS projects (
+  id              TEXT PRIMARY KEY,
+  name            TEXT NOT NULL,
+  slug            TEXT NOT NULL UNIQUE,
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL,
+  visual_mode     TEXT NOT NULL,
+  preset_id       TEXT,
+  mapping_id      TEXT,
+  template_id     TEXT,
+  seed            INTEGER NOT NULL,
+  fps             INTEGER NOT NULL,
+  width           INTEGER NOT NULL,
+  height          INTEGER NOT NULL,
+  duration_frames INTEGER NOT NULL,
+  settings_json   TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS project_assets (
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  asset_id     TEXT NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+  role         TEXT NOT NULL CHECK (role IN ('primary_audio','album_art','extra')),
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (project_id, asset_id, role)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_assets_project ON project_assets(project_id);
+
+CREATE TABLE IF NOT EXISTS project_tracks (
+  id           TEXT PRIMARY KEY,
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  asset_id     TEXT NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+  sort_order   INTEGER NOT NULL,
+  name         TEXT,
+  created_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS track_params (
+  track_id     TEXT PRIMARY KEY REFERENCES project_tracks(id) ON DELETE CASCADE,
+  volume_db    REAL NOT NULL DEFAULT 0.0,
+  pan          REAL NOT NULL DEFAULT 0.0,
+  start_offset_ms INTEGER NOT NULL DEFAULT 0,
+  loop_enabled INTEGER NOT NULL DEFAULT 0,
+  loop_start_ms INTEGER,
+  loop_end_ms   INTEGER,
+  fade_in_ms    INTEGER NOT NULL DEFAULT 0,
+  fade_out_ms   INTEGER NOT NULL DEFAULT 0,
+  params_json   TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS audio_bounces (
+  id            TEXT PRIMARY KEY,
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  bounce_profile TEXT NOT NULL,
+  wav_asset_id  TEXT NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+  sha256        TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  manifest_json TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS analysis_profiles (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  sample_rate_hz INTEGER NOT NULL,
+  hop_length    INTEGER NOT NULL,
+  algorithm_json TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS analysis_cache (
+  id              TEXT PRIMARY KEY,
+  audio_asset_id  TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  audio_sha256    TEXT NOT NULL,
+  analysis_profile_id TEXT NOT NULL REFERENCES analysis_profiles(id) ON DELETE RESTRICT,
+  analysis_version TEXT NOT NULL,
+  tempo_bpm       REAL,
+  beat_times_json TEXT,
+  summary_json    TEXT NOT NULL DEFAULT '{}',
+  created_at      INTEGER NOT NULL,
+  computed_at     INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_analysis_cache_key
+ON analysis_cache(audio_sha256, analysis_version, analysis_profile_id);
+
+CREATE TABLE IF NOT EXISTS analysis_artifacts (
+  id              TEXT PRIMARY KEY,
+  analysis_cache_id TEXT NOT NULL REFERENCES analysis_cache(id) ON DELETE CASCADE,
+  kind            TEXT NOT NULL,
+  relpath         TEXT NOT NULL,
+  sha256          TEXT NOT NULL,
+  size_bytes      INTEGER NOT NULL,
+  created_at      INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_analysis_artifacts_cache ON analysis_artifacts(analysis_cache_id);
+
+CREATE TABLE IF NOT EXISTS parameter_registry (
+  id            TEXT PRIMARY KEY,
+  mode_id       TEXT NOT NULL,
+  type          TEXT NOT NULL CHECK (type IN ('float','int','bool','color','vec2','vec3','enum','string')),
+  default_json  TEXT NOT NULL,
+  range_json    TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  introduced_in_schema INTEGER NOT NULL,
+  deprecated_in_schema INTEGER,
+  extra_json    TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_param_registry_mode ON parameter_registry(mode_id);
+
+CREATE TABLE IF NOT EXISTS mapping_schemas (
+  version       INTEGER PRIMARY KEY,
+  name          TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mappings (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  schema_version INTEGER NOT NULL REFERENCES mapping_schemas(version) ON DELETE RESTRICT,
+  dsl_text      TEXT NOT NULL,
+  compiled_json TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS preset_schemas (
+  version       INTEGER PRIMARY KEY,
+  name          TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS presets (
+  id            TEXT PRIMARY KEY,
+  mode_id       TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  schema_version INTEGER NOT NULL REFERENCES preset_schemas(version) ON DELETE RESTRICT,
+  mapping_id    TEXT REFERENCES mappings(id) ON DELETE SET NULL,
+  seed          INTEGER NOT NULL,
+  overrides_json TEXT NOT NULL DEFAULT '{}',
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_presets_mode ON presets(mode_id);
+
+CREATE TABLE IF NOT EXISTS template_schemas (
+  version       INTEGER PRIMARY KEY,
+  name          TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS templates (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  schema_version INTEGER NOT NULL REFERENCES template_schemas(version) ON DELETE RESTRICT,
+  template_json TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS jobs (
+  id             TEXT PRIMARY KEY,
+  type           TEXT NOT NULL,
+  status         TEXT NOT NULL CHECK (status IN ('queued','running','paused','canceled','failed','succeeded')),
+  priority       INTEGER NOT NULL DEFAULT 0,
+  payload_json   TEXT NOT NULL,
+  progress_json  TEXT NOT NULL DEFAULT '{}',
+  result_json    TEXT NOT NULL DEFAULT '{}',
+  error_json     TEXT,
+  cancel_requested INTEGER NOT NULL DEFAULT 0,
+  created_at     INTEGER NOT NULL,
+  updated_at     INTEGER NOT NULL,
+  started_at     INTEGER,
+  finished_at    INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(type);
+
+CREATE TABLE IF NOT EXISTS job_events (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id        TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  at            INTEGER NOT NULL,
+  level         TEXT NOT NULL CHECK (level IN ('debug','info','warn','error')),
+  event_type    TEXT NOT NULL,
+  data_json     TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(job_id);
+
+CREATE TABLE IF NOT EXISTS render_jobs (
+  job_id         TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  project_id     TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+  export_preset_json TEXT NOT NULL,
+  segment_frames INTEGER NOT NULL,
+  total_frames   INTEGER NOT NULL,
+  checkpoint_frames_json TEXT NOT NULL,
+  workspace_relpath TEXT NOT NULL,
+  output_bundle_relpath TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS render_segments (
+  id            TEXT PRIMARY KEY,
+  job_id        TEXT NOT NULL REFERENCES render_jobs(job_id) ON DELETE CASCADE,
+  segment_index INTEGER NOT NULL,
+  start_frame   INTEGER NOT NULL,
+  frame_count   INTEGER NOT NULL,
+  status        TEXT NOT NULL CHECK (status IN ('pending','rendered','encoded','failed')),
+  frames_relpath TEXT,
+  segment_mp4_relpath TEXT,
+  segment_sha256 TEXT,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  UNIQUE(job_id, segment_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_render_segments_job ON render_segments(job_id);
+
+CREATE TABLE IF NOT EXISTS exports (
+  id            TEXT PRIMARY KEY,
+  job_id        TEXT NOT NULL REFERENCES render_jobs(job_id) ON DELETE RESTRICT,
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+  created_at    INTEGER NOT NULL,
+  bundle_relpath TEXT NOT NULL,
+  video_relpath  TEXT NOT NULL,
+  thumbnail_relpath TEXT NOT NULL,
+  metadata_relpath TEXT NOT NULL,
+  provenance_relpath TEXT NOT NULL,
+  build_manifest_relpath TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS oauth_profiles (
+  id            TEXT PRIMARY KEY,
+  provider      TEXT NOT NULL CHECK (provider IN ('youtube')),
+  display_name  TEXT,
+  keyring_account TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS channels (
+  id            TEXT PRIMARY KEY,
+  oauth_profile_id TEXT NOT NULL REFERENCES oauth_profiles(id) ON DELETE CASCADE,
+  channel_id    TEXT NOT NULL,
+  channel_title TEXT,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL,
+  UNIQUE(oauth_profile_id, channel_id)
+);
+
+CREATE TABLE IF NOT EXISTS publish_profiles (
+  id            TEXT PRIMARY KEY,
+  channel_row_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  template_id    TEXT NOT NULL REFERENCES templates(id) ON DELETE RESTRICT,
+  defaults_json  TEXT NOT NULL DEFAULT '{}',
+  created_at     INTEGER NOT NULL,
+  updated_at     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS youtube_uploads (
+  job_id         TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  export_id      TEXT NOT NULL REFERENCES exports(id) ON DELETE RESTRICT,
+  channel_row_id TEXT NOT NULL REFERENCES channels(id) ON DELETE RESTRICT,
+  publish_profile_id TEXT NOT NULL REFERENCES publish_profiles(id) ON DELETE RESTRICT,
+  resumable_session_url TEXT,
+  bytes_total    INTEGER,
+  bytes_uploaded INTEGER,
+  video_id       TEXT,
+  last_http_status INTEGER,
+  updated_at     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS batch_plans (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  plan_json     TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS batch_items (
+  id            TEXT PRIMARY KEY,
+  batch_id      TEXT NOT NULL REFERENCES batch_plans(id) ON DELETE CASCADE,
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
+  variant_spec_id TEXT,
+  status        TEXT NOT NULL CHECK (status IN ('pending','queued','running','failed','succeeded','skipped')),
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS variant_graphs (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  graph_json    TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS variant_specs (
+  id            TEXT PRIMARY KEY,
+  graph_id      TEXT NOT NULL REFERENCES variant_graphs(id) ON DELETE CASCADE,
+  spec_json     TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS variant_reports (
+  id            TEXT PRIMARY KEY,
+  batch_id      TEXT NOT NULL REFERENCES batch_plans(id) ON DELETE CASCADE,
+  report_json   TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS model_registry (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  version       TEXT NOT NULL,
+  license       TEXT NOT NULL,
+  source_url    TEXT NOT NULL,
+  sha256        TEXT NOT NULL,
+  relpath       TEXT NOT NULL,
+  size_bytes    INTEGER NOT NULL,
+  installed_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS quota_budgets (
+  id            TEXT PRIMARY KEY,
+  scope         TEXT NOT NULL,
+  date_ymd      TEXT NOT NULL,
+  budget_units  INTEGER NOT NULL,
+  used_units    INTEGER NOT NULL DEFAULT 0,
+  updated_at    INTEGER NOT NULL,
+  UNIQUE(scope, date_ymd)
+);
+
+CREATE TABLE IF NOT EXISTS analytics_snapshots (
+  id            TEXT PRIMARY KEY,
+  channel_row_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  range_start_ymd TEXT NOT NULL,
+  range_end_ymd   TEXT NOT NULL,
+  metrics_json   TEXT NOT NULL,
+  dimensions_json TEXT NOT NULL,
+  data_json      TEXT NOT NULL,
+  created_at     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reporting_files (
+  id            TEXT PRIMARY KEY,
+  channel_row_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  report_type   TEXT NOT NULL,
+  range_start_ymd TEXT NOT NULL,
+  range_end_ymd   TEXT NOT NULL,
+  csv_relpath   TEXT NOT NULL,
+  sha256        TEXT NOT NULL,
+  imported_at   INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS revenue_records (
+  id            TEXT PRIMARY KEY,
+  channel_row_id TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  date_ymd      TEXT NOT NULL,
+  currency      TEXT NOT NULL,
+  amount_micros INTEGER NOT NULL,
+  source        TEXT NOT NULL CHECK (source IN ('api','manual_import')),
+  created_at    INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_revenue_channel_date ON revenue_records(channel_row_id, date_ymd);
+
+CREATE TABLE IF NOT EXISTS niche_keywords (
+  id            TEXT PRIMARY KEY,
+  channel_row_id TEXT REFERENCES channels(id) ON DELETE SET NULL,
+  keyword       TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS niche_notes (
+  id            TEXT PRIMARY KEY,
+  keyword_id    TEXT REFERENCES niche_keywords(id) ON DELETE SET NULL,
+  note_text     TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  updated_at    INTEGER NOT NULL
+);

@@ -14,4 +14,13 @@ for path in app/project.godot worker/pyproject.toml native/vas_keyring/Cargo.tom
   fi
 done
 
+if [[ -x worker/.venv/bin/python ]]; then
+  PYTHONPATH=worker:app/src/core_py worker/.venv/bin/python -m pytest -q app/tests_py/integration | tee out/logs/integration_py.log
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHONPATH=worker:app/src/core_py python3 -m pytest -q app/tests_py/integration | tee out/logs/integration_py.log
+else
+  echo "ERROR: python3 unavailable for integration tests" >&2
+  exit 1
+fi
+
 echo "Integration sanity checks complete" | tee out/logs/integration.log

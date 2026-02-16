@@ -11,11 +11,14 @@ app/export_presets.cfg
 
 # Toolchains and binaries
 tools/ffmpeg/**
+!tools/ffmpeg/checksums.json
 
 # Python worker virtualenvs and caches
 worker/.venv/**
 worker/**/__pycache__/**
 worker/.pytest_cache/**
+**/__pycache__/**
+.pytest_cache/**
 
 # ML models and downloads
 models/**
@@ -35,3 +38,6 @@ native/vas_keyring/target/**
 # Test artifacts
 coverage/**
 *.log
+
+# Python packaging artifacts
+worker/*.egg-info/**
