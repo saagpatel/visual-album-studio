@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Phase 7 complete and capstone audit complete on product paths (pending merge to main)
+**Current state:** Phase 7 complete and capstone audit complete on product paths (merged to `main` and pushed to GitHub)
 **Last updated:** 2026-02-16
 
 ## Rebaseline Summary
@@ -155,6 +155,7 @@
 - Closed: branch hygiene cleanup complete; local branches reduced to `main` only.
 - Closed: pinned Godot `4.4.x` gate rerun completed successfully.
 - Closed: live provider validation blocker for Phase 5/6.
+- Open follow-up (LOW): Rust transitive advisory lifecycle tracking issue [#1](https://github.com/saagar210/visual-album-studio/issues/1) for warning-level upstream maintenance advisories in the keyring dependency graph.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
