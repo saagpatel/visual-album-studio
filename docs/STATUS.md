@@ -113,6 +113,7 @@
   - `scripts/test/live_phase_06.sh`
   - `scripts/test/live_closeout.sh`
   - `scripts/test/live_validation.py`
+  - `scripts/test/live.env.example`
 - Latest run results:
   - `./scripts/test/live_phase_05.sh` => pending (exit 2)
   - `./scripts/test/live_phase_06.sh` => pending (exit 2)
