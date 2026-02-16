@@ -33,6 +33,9 @@ out/cache/**
 out/tmp/**
 .cache/**
 
+# Local secret env files
+scripts/test/live.env
+
 # Rust build artifacts
 native/vas_keyring/target/**
 
