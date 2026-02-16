@@ -5,6 +5,13 @@ This document is the master plan for phases, deliverables, and stop/go gates. Ea
 ## Phase order (authoritative)
 Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
 
+## Post-v1 extension phases (non-authoritative drafts)
+- The authoritative gated chain ends at Phase 6 unless `docs/01-pinned-decisions.md` is explicitly amended.
+- Draft extension specs can be prepared for planning and estimation.
+- Current draft extension:
+  - **Phase 7 (draft):** UX excellence, productization, and post-v1 velocity
+  - Spec: `docs/phases/phase-07.md`
+
 ## Stop/Go gates (hard)
 
 ### Global gate rule
