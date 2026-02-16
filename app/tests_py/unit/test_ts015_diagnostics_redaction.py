@@ -20,7 +20,14 @@ def test_ts015_diagnostics_redaction_and_schema(runtime, test_root: Path):
     )
 
     svc = ProductizationService(runtime.db, out_dir=test_root / "out")
-    result = svc.export_diagnostics({"log_paths": [str(log_path)], "scope_id": "ts015"})
+    result = svc.export_diagnostics(
+        {
+            "log_paths": [str(log_path)],
+            "scope_id": "ts015",
+            "refresh_token": "SUPER_SECRET_TOKEN_123",
+            "nested": {"client_secret": "TOP_SECRET"},
+        }
+    )
     assert result["ok"]
     diag = result["diagnostics"]
     assert diag["id"].startswith("diag_")
@@ -31,3 +38,6 @@ def test_ts015_diagnostics_redaction_and_schema(runtime, test_root: Path):
     assert payload["payload"]["redaction_summary"]["lines_redacted"] >= 2
     file_block = payload["payload"]["files"][0]
     assert "[REDACTED]" in file_block["content"]
+    assert payload["scope"]["refresh_token"] == "[REDACTED]"
+    assert payload["scope"]["nested"]["client_secret"] == "[REDACTED]"
+    assert "SUPER_SECRET_TOKEN_123" not in json.dumps(payload, sort_keys=True)

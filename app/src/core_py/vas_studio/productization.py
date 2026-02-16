@@ -95,7 +95,6 @@ class ProductizationService:
                 "rust": "stable",
             },
             "artifacts": sorted(artifacts, key=lambda item: (item["name"], item["path"])),
-            "created_at": now,
         }
         content = json.dumps(payload, sort_keys=True, indent=2)
         manifest_path.write_text(content, encoding="utf-8")
@@ -119,7 +118,8 @@ class ProductizationService:
 
     def export_diagnostics(self, scope: dict) -> dict:
         now = int(time.time())
-        log_paths = [Path(p) for p in scope.get("log_paths", [])]
+        safe_scope = self._redact_value(dict(scope))
+        log_paths = [Path(p) for p in safe_scope.get("log_paths", [])]
         if not log_paths:
             logs_dir = self.out_dir / "logs"
             if logs_dir.exists():
@@ -140,7 +140,7 @@ class ProductizationService:
         bundle = {
             "id": f"diag_{uuid.uuid4().hex}",
             "schema_version": 1,
-            "scope": dict(scope),
+            "scope": dict(safe_scope),
             "payload": {
                 "files": files,
                 "redaction_summary": redaction_summary,
@@ -162,7 +162,7 @@ class ProductizationService:
                 """,
                 (
                     bundle["id"],
-                    json.dumps(scope, sort_keys=True),
+                    json.dumps(safe_scope, sort_keys=True),
                     str(out_path),
                     json.dumps(redaction_summary, sort_keys=True),
                     now,
@@ -199,21 +199,22 @@ class ProductizationService:
         return {"ok": True, "channel": channel_id}
 
     def generate_support_report(self, context: dict) -> dict:
-        code = str(context.get("error_code", "E_UNKNOWN"))
+        safe_context = self._redact_value(dict(context))
+        code = str(safe_context.get("error_code", "E_UNKNOWN"))
         runbook = self._runbook_for_error(code)
         severity = self._severity_for_error(code)
         report = SupportReport(
             report_id=f"support_{uuid.uuid4().hex}",
             severity=severity,
             summary=f"Troubleshooting guidance generated for {code}",
-            details={"context": dict(context), "runbook": runbook, "classification": severity},
+            details={"context": dict(safe_context), "runbook": runbook, "classification": severity},
         )
         if self.db:
             self.db.execute(
                 "INSERT OR REPLACE INTO support_reports(id, context_json, report_json, created_at) VALUES (?, ?, ?, ?)",
                 (
                     report.report_id,
-                    json.dumps(context, sort_keys=True),
+                    json.dumps(safe_context, sort_keys=True),
                     json.dumps(report.details, sort_keys=True),
                     int(time.time()),
                 ),
@@ -229,6 +230,31 @@ class ProductizationService:
                 summary["matches"][pattern] = int(summary["matches"].get(pattern, 0)) + 1
                 return "[REDACTED]"
         return line
+
+    def _redact_value(self, value):
+        if isinstance(value, dict):
+            redacted = {}
+            for key, item in value.items():
+                key_str = str(key)
+                if self._key_looks_secret(key_str):
+                    redacted[key_str] = "[REDACTED]"
+                else:
+                    redacted[key_str] = self._redact_value(item)
+            return redacted
+        if isinstance(value, list):
+            return [self._redact_value(item) for item in value]
+        if isinstance(value, str):
+            summary = {"lines_redacted": 0, "matches": {}}
+            return self._redact_line(value, summary)
+        return value
+
+    @staticmethod
+    def _key_looks_secret(key_name: str) -> bool:
+        lowered = key_name.lower()
+        for marker in ["refresh_token", "access_token", "client_secret", "authorization", "api_key", "password", "secret"]:
+            if marker in lowered:
+                return True
+        return False
 
     @staticmethod
     def _runbook_for_error(code: str) -> str:

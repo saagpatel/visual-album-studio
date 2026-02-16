@@ -5,6 +5,15 @@ const VasIds = preload("res://src/shared/ids.gd")
 const SupportTypes = preload("res://src/shared/support_types.gd")
 const DiagnosticsAdapter = preload("res://src/adapters/diagnostics_adapter.gd")
 const PackagingAdapter = preload("res://src/adapters/packaging_adapter.gd")
+const SECRET_KEY_HINTS = [
+	"refresh_token",
+	"access_token",
+	"client_secret",
+	"authorization",
+	"api_key",
+	"password",
+	"secret",
+]
 
 var db
 var diagnostics
@@ -90,17 +99,18 @@ func export_diagnostics(scope: Dictionary) -> Dictionary:
 	if log_paths.is_empty():
 		log_paths = _discover_log_paths(logs_dir)
 
+	var safe_scope: Dictionary = _redact_variant(scope)
 	var summaries = diagnostics.collect_log_summaries(log_paths)
 	var payload = {
 		"log_summary": summaries,
-		"scope": scope.duplicate(true),
+		"scope": safe_scope.duplicate(true),
 		"toolchain": {
 			"godot": "4.4.x",
 			"ffmpeg": "managed",
 		},
 		"generated_at": int(Time.get_unix_time_from_system()),
 	}
-	var exported = diagnostics.export_bundle(output_dir, scope, payload)
+	var exported = diagnostics.export_bundle(output_dir, safe_scope, payload)
 	if not bool(exported.get("ok", false)):
 		return {
 			"ok": false,
@@ -118,7 +128,7 @@ func export_diagnostics(scope: Dictionary) -> Dictionary:
 			VALUES (%s, %s, %s, %s, %d);
 		""" % [
 			db.quote(bundle_id),
-			db.quote(JSON.stringify(scope)),
+			db.quote(JSON.stringify(safe_scope)),
 			db.quote(_relative_to_root(out_path)),
 			db.quote(JSON.stringify(redaction_summary)),
 			now,
@@ -186,11 +196,12 @@ func set_release_channel(channel_id: String) -> Dictionary:
 	return {"ok": true, "channel": channel_id}
 
 func generate_support_report(context: Dictionary) -> Dictionary:
-	var code = String(context.get("error_code", "E_UNKNOWN"))
+	var safe_context: Dictionary = _redact_variant(context)
+	var code = String(safe_context.get("error_code", "E_UNKNOWN"))
 	var runbook = _runbook_for_error(code)
 	var report_id = VasIds.new_id("support")
 	var details = {
-		"context": context.duplicate(true),
+		"context": safe_context.duplicate(true),
 		"runbook": runbook,
 		"classification": _classify_severity(code),
 	}
@@ -201,7 +212,7 @@ func generate_support_report(context: Dictionary) -> Dictionary:
 			VALUES (%s, %s, %s, %d);
 		""" % [
 			db.quote(report_id),
-			db.quote(JSON.stringify(context)),
+			db.quote(JSON.stringify(safe_context)),
 			db.quote(JSON.stringify(details)),
 			now,
 		]
@@ -266,3 +277,33 @@ func _path_or_default(key: String, fallback: String) -> String:
 	if paths.has(key):
 		return String(paths[key])
 	return fallback
+
+func _redact_variant(value: Variant) -> Variant:
+	match typeof(value):
+		TYPE_DICTIONARY:
+			var input: Dictionary = value
+			var out: Dictionary = {}
+			for key in input.keys():
+				var key_str = String(key)
+				if _key_looks_secret(key_str):
+					out[key_str] = "[REDACTED]"
+				else:
+					out[key_str] = _redact_variant(input[key])
+			return out
+		TYPE_ARRAY:
+			var input_array: Array = value
+			var out_array: Array = []
+			for item in input_array:
+				out_array.append(_redact_variant(item))
+			return out_array
+		TYPE_STRING:
+			return diagnostics.redact_text(String(value))
+		_:
+			return value
+
+func _key_looks_secret(key_name: String) -> bool:
+	var lowered = key_name.to_lower()
+	for marker in SECRET_KEY_HINTS:
+		if lowered.find(marker) != -1:
+			return true
+	return false

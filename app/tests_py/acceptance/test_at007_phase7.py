@@ -49,10 +49,18 @@ def test_at007_phase7_ux_and_productization(runtime, test_root: Path):
     logs_dir.mkdir(parents=True, exist_ok=True)
     test_log = logs_dir / "phase7_acceptance.log"
     test_log.write_text("ok\nrefresh_token=secret\n", encoding="utf-8")
-    diag = productization.export_diagnostics({"log_paths": [str(test_log)], "scope_id": "at007"})
+    diag = productization.export_diagnostics(
+        {
+            "log_paths": [str(test_log)],
+            "scope_id": "at007",
+            "refresh_token": "AT007_SECRET",
+        }
+    )
     assert diag["ok"]
     diag_payload = json.loads(Path(diag["diagnostics"]["output_path"]).read_text(encoding="utf-8"))
     assert diag_payload["payload"]["redaction_summary"]["lines_redacted"] >= 1
+    assert diag_payload["scope"]["refresh_token"] == "[REDACTED]"
+    assert "AT007_SECRET" not in json.dumps(diag_payload, sort_keys=True)
 
     # Packaging determinism
     pack_a = productization.run_packaging_dry_run("phase7_profile", channel="stable")

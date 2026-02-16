@@ -82,13 +82,21 @@ func _run() -> int:
 	log_file.store_string("normal line\nAuthorization: Bearer abc123\nrefresh_token=zzz\n")
 	log_file.close()
 
-	var diag = productization.export_diagnostics({"log_paths": [log_path], "scope_id": "at007"})
+	var diag = productization.export_diagnostics({
+		"log_paths": [log_path],
+		"scope_id": "at007",
+		"refresh_token": "AT007_SECRET",
+	})
 	if not _assert_true(bool(diag.get("ok", false)), "diagnostics export"):
 		return 1
 	var diag_path = String(diag.get("diagnostics", {}).get("output_path", ""))
 	var diag_json = _read_json(diag_path)
 	var lines_redacted = int(diag_json.get("payload", {}).get("log_summary", {}).get("redaction_summary", {}).get("lines_redacted", 0))
 	if not _assert_true(lines_redacted >= 1, "diagnostics redaction applied"):
+		return 1
+	if not _assert_true(String(diag_json.get("scope", {}).get("refresh_token", "")) == "[REDACTED]", "diagnostics scope redaction"):
+		return 1
+	if not _assert_true(not JSON.stringify(diag_json).contains("AT007_SECRET"), "diagnostics secret not persisted"):
 		return 1
 
 	var pack_a = productization.run_packaging_dry_run("phase7_profile")
