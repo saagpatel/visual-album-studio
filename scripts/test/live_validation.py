@@ -108,7 +108,7 @@ def _keyring_roundtrip() -> CheckResult:
         return CheckResult("keyring_roundtrip", "skip", f"helper missing at {helper}")
 
     service = "vas-live-validation"
-    account = f"phase5-{dt.datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    account = f"phase5-{dt.datetime.now(dt.UTC).strftime('%Y%m%d%H%M%S')}"
     secret = base64.urlsafe_b64encode(os.urandom(24)).decode("utf-8")
 
     set_cmd = [str(helper), "set", service, account, secret]
@@ -151,7 +151,7 @@ def _phase5(access_token: str) -> Dict[str, Any]:
             checks.append(CheckResult("youtube_resumable_upload", "fail", f"file missing: {path}"))
         else:
             init_payload = {
-                "snippet": {"title": f"VAS live validation {dt.datetime.utcnow().isoformat()}"},
+                "snippet": {"title": f"VAS live validation {dt.datetime.now(dt.UTC).isoformat()}"},
                 "status": {"privacyStatus": "private"},
             }
             size = path.stat().st_size

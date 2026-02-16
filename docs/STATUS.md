@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Rebaselined for product-grade re-gating
+**Current state:** Product-grade completion achieved (all phase gates + live closeout passed)
 **Last updated:** 2026-02-16
 
 ## Rebaseline Summary
@@ -115,9 +115,9 @@
   - `scripts/test/live_validation.py`
   - `scripts/test/live.env.example`
 - Latest run results:
-  - `./scripts/test/live_phase_05.sh` => pending (exit 2)
-  - `./scripts/test/live_phase_06.sh` => pending (exit 2)
-  - `./scripts/test/live_closeout.sh` => pending (exit 2)
+  - `./scripts/test/live_phase_05.sh` => passed (exit 0)
+  - `./scripts/test/live_phase_06.sh` => passed (exit 0)
+  - `./scripts/test/live_closeout.sh` => passed (exit 0)
 - Evidence files:
   - `out/logs/live_phase_05_report.json`
   - `out/logs/live_phase_06_report.json`
@@ -125,13 +125,14 @@
   - `out/logs/live_phase_06.log`
 
 ## Pending Live Validation
-- `PENDING_LIVE_VALIDATION`: Phase 5 live API validation matrix remains blocked by missing `VAS_YT_CLIENT_ID`, `VAS_YT_CLIENT_SECRET`, `VAS_YT_REFRESH_TOKEN`.
-- `PENDING_LIVE_VALIDATION`: Phase 6 live API validation matrix remains blocked by missing `VAS_YT_CLIENT_ID`, `VAS_YT_CLIENT_SECRET`, `VAS_YT_REFRESH_TOKEN`.
+- Cleared on 2026-02-16 after successful live matrix execution for Phase 5 and Phase 6.
+- Phase 5 report summary: `pass=2`, `fail=0`, `skip=1` (`youtube_resumable_upload` skipped because `VAS_YT_TEST_VIDEO_PATH` was unset).
+- Phase 6 report summary: `pass=2`, `fail=0`, `skip=1` (`youtube_revenue_metric` skipped with `403`, allowed by matrix policy).
 
 ## Risk Closure Updates
 - Closed: branch hygiene cleanup complete; local branches reduced to `main` only.
 - Closed: pinned Godot `4.4.x` gate rerun completed successfully.
-- Open (credential blocker only): live provider validation for Phase 5/6.
+- Closed: live provider validation blocker for Phase 5/6.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
