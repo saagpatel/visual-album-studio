@@ -53,7 +53,7 @@ class Phase1Runtime:
         self.exporter = ExportService(self.db, self.paths, self.ffmpeg, self.assets)
 
     def setup(self) -> None:
-        self.migrations.apply(max_version=1)
+        self.migrations.apply()
         now = int(time.time())
 
         self.db.execute(

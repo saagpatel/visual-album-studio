@@ -13,3 +13,12 @@ func _init(p_code: String = "E_UNKNOWN", p_message: String = "", p_details: Dict
 	details = p_details
 	recoverable = p_recoverable
 	hint = p_hint
+
+func to_dict() -> Dictionary:
+	return {
+		"code": code,
+		"message": message,
+		"details": details,
+		"recoverable": recoverable,
+		"hint": hint,
+	}
