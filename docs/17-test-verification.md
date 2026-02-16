@@ -111,6 +111,17 @@ The implementation must provide these scripts:
 ./scripts/test/acceptance_phase_07.sh
 ```
 
+## Capstone audit automation (post-Phase-7)
+
+```bash
+./scripts/test/capstone_baseline.sh
+./scripts/test/determinism_rerun.sh
+./scripts/test/reliability_longrun.sh
+./scripts/test/security_audit.sh
+./scripts/test/repo_hygiene_audit.sh
+./scripts/test/capstone_audit.sh
+```
+
 ## Phase-by-phase verification details
 
 ### Phase 1 (AT-001)
