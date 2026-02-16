@@ -1,0 +1,2 @@
+[console_scripts]
+vas-audio-worker = vas_audio_worker.cli:main

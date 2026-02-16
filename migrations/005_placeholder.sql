@@ -1,0 +1,2 @@
+-- Phase 005 migration placeholder
+-- Replace with canonical schema statements from docs/08-data-model-sqlite.md

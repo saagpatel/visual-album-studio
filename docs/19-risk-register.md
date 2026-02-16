@@ -1,0 +1,32 @@
+# Risk Register (RSK-###)
+
+This register tracks the main project risks across product, engineering, and policy.
+
+Scales:
+- **Severity:** High / Medium / Low
+- **Likelihood:** High / Medium / Low
+
+## Risks
+
+| Risk ID | Description | Severity | Likelihood | Mitigation | Detection/Monitoring | Owner (Module/Phase) |
+|---|---|---|---|---|---|---|
+| RSK-001 | Export pipeline fails to be deterministic at frame checkpoints (Phase 1 go/no-go). | High | Medium | Fixed-FPS stepping; seeded RNG only; checkpoint hashing harness; pin Godot/FFmpeg versions. | AT-001 determinism failures pinpoint first divergent checkpoint; diagnostics bundle. | I/C/H (Phase 1) |
+| RSK-002 | Long-duration export crashes or cannot resume reliably; leaves corrupted artifacts. | High | Medium | Segment rendering + encode; atomic finalization; persistent job state; cleanup policy. | Kill/crash/resume tests; IT-003; monitor orphan temp files. | I (Phase 1) |
+| RSK-003 | Disk blow-up from PNG sequences during long renders. | High | High | Segment rendering + immediate encode; delete frames after encode; disk guardrails; prune UI. | Disk usage dashboard; export logs track peak usage; RQ-053. | I/J (Phase 1) |
+| RSK-004 | FFmpeg licensing becomes incompatible with distribution due to GPL components. | High | Medium | Default LGPL-safe build; optional GPL encoder pack opt-in; record license mode in manifest. | Startup license mode checks; build_manifest inspection. | I (Phase 1/3) |
+| RSK-005 | Audio provenance requirements cause user friction; users cannot export. | Medium | Medium | Provide draft export mode; clear UI explaining required fields; templates for common sources. | Track blocked export reasons; UX validation. | J/K (Phase 1) |
+| RSK-006 | Content ID claims or reused/inauthentic content policies reduce monetization viability. | High | High | Enforce provenance; originality ledger; multiple distinct modes; batch guardrails with reviewer report. | Phase 4 reviewer report; export ledger presence; creator education UI. | J/K/N/R (Phase 1/4) |
+| RSK-007 | Motion Poster presets end up too similar ("template spam"). | High | Medium | Require 6+ distinct presets; define structural variation axes; include seed-driven controlled variation. | Manual rubric review; Phase 1 preset diversity checklist. | G/H/K (Phase 1) |
+| RSK-008 | GPU/driver differences cause visual mismatches and user mistrust of preview/export parity. | Medium | Medium | Single render graph; avoid nondeterministic GPU features; define determinism boundary clearly. | AT-002 parity suite across modes; regression screenshots. | C (Phase 1/2) |
+| RSK-009 | Python worker packaging/venv issues break analysis on user machines. | Medium | Medium | Ship pinned dependencies; bootstrap script; worker health checks; graceful fallback messaging. | IT-001; startup self-test; worker version in manifest. | A (Phase 1) |
+| RSK-010 | FFmpeg process management bugs (progress parsing, cancel) cause stuck jobs. | High | Medium | -progress parsing spec; robust process kill; job state machine tests. | IT-002; TS-004 job transitions. | I (Phase 1) |
+| RSK-011 | YouTube OAuth fails due to disallowed embedded user agents. | High | Low | System browser + loopback redirect only; never embed webviews. | AT-005 auth flow validation; error code detection. | L (Phase 5) |
+| RSK-012 | YouTube uploads restricted to private due to unverified API project/audit constraints. | High | Medium | Treat publishing as optional; support manual upload fallback; audit readiness checklist. | Publish job warns and continues in private mode; UI state. | L/K (Phase 5) |
+| RSK-013 | YouTube quota exhaustion blocks publishing workflows. | Medium | High | Quota budgeting UI; throttle/schedule; avoid high-cost calls; caching. | TS-010 quota calculator; publish job logs quota usage. | L/M/N (Phase 5) |
+| RSK-014 | Resumable upload implementation is unreliable; uploads restart from 0 after interruption. | High | Medium | Implement resumable protocol properly; persist session URL and byte offset; retry/backoff. | IT-006 mock server; AT-005 interruption test. | L (Phase 5) |
+| RSK-015 | Multi-channel confusion leads to wrong-channel uploads. | High | Medium | Explicit channel binding + confirmation; show channel ID/title prominently; require publish profile selection. | AT-005 wrong-channel guard test; UI audit. | M/L (Phase 5) |
+| RSK-016 | ML model licensing/distribution issues (Phase 2) create legal risk. | High | Medium | Models optional download; record provenance; do not bundle by default; block production use if license unknown. | Model registry validation; provenance file includes model license. | E/J (Phase 2) |
+| RSK-017 | Performance issues for long renders (2h) make product impractical. | High | Medium | Optimize render graph; segment parallelism (where safe); provide quality tiers; monitor render FPS. | Export logs include throughput metrics; profiling runbooks. | C/I (Phase 1/2) |
+| RSK-018 | Analytics/revenue availability differs by account; users see empty dashboards. | Medium | High | Graceful degradation; clear “not available” explanations; manual import fallback. | AT-006 “unavailable” paths; UX validation. | P/Q (Phase 6) |
+| RSK-019 | Privacy leak via logs/diagnostics (tokens or PII). | High | Low | Redaction enforced by tests; diagnostics export excludes secrets; secure storage only. | Automated log scanning in tests; AT-005 privacy checks. | L/I (Phase 5) |
+| RSK-020 | Schema migrations corrupt user data. | High | Low | Forward-only migrations with transactions; backups; migration tests; refuse newer DB. | TS-008 migration runner tests; backup before migration (optional). | J (All phases) |

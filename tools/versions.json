@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "godot": {
+    "version": "4.4.x",
+    "channel": "stable"
+  },
+  "ffmpeg": {
+    "version": "7.1.x",
+    "license_mode_default": "lgpl",
+    "managed_root": "tools/ffmpeg"
+  },
+  "python_worker": {
+    "python_version": "3.11",
+    "lock_file": "worker/requirements.lock"
+  },
+  "sqlite": {
+    "schema_version": 1,
+    "migrations_dir": "migrations"
+  },
+  "rust": {
+    "channel": "stable",
+    "crate": "native/vas_keyring"
+  }
+}

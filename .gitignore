@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# Generated outputs
+out/**
+
+# Godot artifacts
+app/.godot/**
+app/**/*.import
+app/export_presets.cfg
+
+# Toolchains and binaries
+tools/ffmpeg/**
+
+# Python worker virtualenvs and caches
+worker/.venv/**
+worker/**/__pycache__/**
+worker/.pytest_cache/**
+
+# ML models and downloads
+models/**
+out/models/**
+app/models/**
+
+# Logs and caches
+logs/**
+out/logs/**
+out/cache/**
+out/tmp/**
+.cache/**
+
+# Rust build artifacts
+native/vas_keyring/target/**
+
+# Test artifacts
+coverage/**
+*.log
