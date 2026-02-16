@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "platform": "darwin-arm64",
+      "version": "7.1.x",
+      "filename": "ffmpeg",
+      "sha256": "REPLACE_WITH_PINNED_SHA256"
+    },
+    {
+      "platform": "darwin-x86_64",
+      "version": "7.1.x",
+      "filename": "ffmpeg",
+      "sha256": "REPLACE_WITH_PINNED_SHA256"
+    }
+  ]
+}

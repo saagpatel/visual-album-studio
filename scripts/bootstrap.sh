@@ -35,7 +35,6 @@ python -m pip install --upgrade pip >/dev/null
 if [[ -f worker/requirements.lock ]]; then
   python -m pip install -r worker/requirements.lock >/dev/null
 fi
-python -m pip install -e worker >/dev/null
 
 cargo build --manifest-path native/vas_keyring/Cargo.toml >/dev/null
 
