@@ -144,3 +144,51 @@ STOP CONDITIONS
 - `docs/STATUS.md`:
   - Mark phase checkboxes as you complete and verify.
   - Record any necessary deviations as explicit, justified decisions (should be rare).
+
+## UI Hard Gates (when UI scope changes)
+1) Reviewer emits `UIFindingV1[]` from `/Users/d/.codex/contracts/UIFindingV1.schema.json`.
+2) Fixer applies UI findings in order: `P0 -> P1 -> P2 -> P3`.
+3) Required states: loading, empty, error, success, disabled, focus-visible.
+4) Required UI gates: static lint/type/style, visual regression, a11y regression, responsive checks, and Lighthouse CI.
+5) UI done-state is blocked if any required gate is `fail` or `not-run`.
+
+## Codex Reliability Contract
+
+### Canonical Verification Commands (Source of Truth)
+Source: `.codex/verify.commands` (derived from `docs/00-readme.md` and `scripts/test/*`)
+- lint: `N/A (no canonical lint command currently documented)`
+- format-check: `N/A (no canonical format-check command currently documented)`
+- typecheck: `N/A (no standalone typecheck command currently documented)`
+- unit-test: `./scripts/test/unit.sh`
+- integration-test: `./scripts/test/integration.sh`; `./scripts/test/security_audit.sh`; `./scripts/test/repo_hygiene_audit.sh`
+- build: `N/A (build gate currently enforced through phase acceptance scripts)`
+
+### Definition of Done
+- All commands in `.codex/verify.commands` pass via `.codex/scripts/run_verify_commands.sh`.
+- No open `critical` or `high` `ReviewFindingV1` findings.
+- Diff scope matches approved task scope.
+- Security checks (secrets, dependency, and SAST) are clean or explicitly waived with owner + expiry.
+
+### Private Repo Guardrail
+- GitHub branch protection is currently unavailable for this private repo plan.
+- Install and keep the local guard active via `.codex/scripts/install-prepush-guard.sh`.
+- Pushes to `main` must pass `.codex/scripts/run_verify_commands.sh` unless explicitly bypassed with `CODEX_BYPASS_PREPUSH=1` and documented rationale.
+
+### Agent Contract
+- Reviewer agent: read-only and emits only `ReviewFindingV1` findings.
+- Fixer agent: applies accepted findings in severity order and reports exact file patches + verification.
+- Final verifier: re-runs `.codex/scripts/run_verify_commands.sh` and summarizes `GateReportV1`.
+
+## Definition of Done: Tests + Docs (Blocking)
+
+- Any production code change must include meaningful test updates in the same PR.
+- Meaningful tests must include at least:
+  - one primary behavior assertion
+  - two non-happy-path assertions (edge, boundary, invalid input, or failure mode)
+- Trivial assertions are forbidden (`expect(true).toBe(true)`, snapshot-only without semantic assertions, render-only smoke tests without behavior checks).
+- Mock only external boundaries (network, clock, randomness, third-party SDKs). Do not mock the unit under test.
+- UI changes must cover state matrix: loading, empty, error, success, disabled, focus-visible.
+- API/command surface changes must update generated contract artifacts and request/response examples.
+- Architecture-impacting changes must include an ADR in `/docs/adr/`.
+- Required checks are blocking when `fail` or `not-run`: lint, typecheck, tests, coverage, diff coverage, docs check.
+- Reviewer -> fixer -> reviewer loop is required before merge.
