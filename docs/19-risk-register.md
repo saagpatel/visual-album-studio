@@ -36,6 +36,8 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-02-22)
+- Phase 0 closure:
+  - hardening baseline synchronized to `main` at `325c5e5a8a3b094e6256b975ecd91658a55778c8`, removing branch/docs truth drift for release tracking.
 - RSK-009 mitigation strengthened:
   - `scripts/bootstrap.sh` now enforces checksum-field validity in `tools/ffmpeg/checksums.json` and verifies managed FFmpeg binary checksums when present.
 - RSK-011/RSK-014 mitigation strengthened:

@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Phase 7 complete on product paths; production-hardening sprint in progress on `codex/bootstrap-tests-docs-v1` (not yet merged to `main`)
+**Current state:** Phase 7 complete on product paths; production-hardening baseline synced to `main` at `325c5e5a8a3b094e6256b975ecd91658a55778c8`
 **Last updated:** 2026-02-22
 
 ## Rebaseline Summary
@@ -10,6 +10,7 @@
 - Gate policy remains strict: no phase advancement until the current phase acceptance gate passes and prior gates remain green.
 
 ## Hardening Sprint Snapshot (2026-02-22)
+- [x] Phase 0 complete: canonical baseline synchronized to `main` (remote commit `325c5e5a8a3b094e6256b975ecd91658a55778c8`).
 - [x] CI quality workflow aligned to repo-native verification flow (`.github/workflows/quality-gates.yml` no longer uses Node lockfile-dependent install steps).
 - [x] Security audit strict mode (`VAS_SECURITY_STRICT=1`) now passes with no active waiver entries in `docs/security-waivers.json`.
 - [x] FFmpeg checksum placeholders removed from `tools/ffmpeg/checksums.json`; bootstrap enforces non-placeholder checksum policy and verifies managed binary when present.
@@ -164,13 +165,12 @@
 - Capstone rerun note: `./scripts/test/capstone_audit.sh` executed `live_closeout.sh` in pending-prerequisites mode due missing local env vars on that run; this does not reopen Phase 5/6 because live validation was already cleared above.
 
 ## Risk Closure Updates
-- Closed: branch hygiene cleanup complete; local branches reduced to `main` only.
+- Closed: branch/mainline truth alignment complete; hardening baseline is now on `main` at `325c5e5a8a3b094e6256b975ecd91658a55778c8`.
 - Closed: pinned Godot `4.4.x` gate rerun completed successfully.
 - Closed: live provider validation blocker for Phase 5/6.
 - Closed: strict Bandit waiver burn-down complete; strict security audit now passes without `bandit_findings` waiver.
 - Closed: capstone live-closeout pending state on credentialed environments (`scripts/test/capstone_audit.sh` now sources `scripts/test/live.env` when available).
 - Open follow-up (LOW): Rust transitive advisory lifecycle tracking issue [#1](https://github.com/saagar210/visual-album-studio/issues/1) for warning-level upstream maintenance advisories in the keyring dependency graph.
-- Open follow-up (MEDIUM): mainline truth drift remains; hardening changes currently exist on `codex/bootstrap-tests-docs-v1` and require merge/sync to `main`.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
