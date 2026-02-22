@@ -1,5 +1,8 @@
-# Replace these commands with your repo's canonical checks.
-# Keep order strict: fast static checks first, then behavioral, then docs drift.
-npm run lint
-npm run test
-npm run docs:check
+# Canonical verification commands for this repository.
+# Sources:
+# - AGENTS.md (Codex Reliability Contract)
+# - docs/17-test-verification.md
+./scripts/test/unit.sh
+./scripts/test/integration.sh
+./scripts/test/security_audit.sh
+./scripts/test/repo_hygiene_audit.sh

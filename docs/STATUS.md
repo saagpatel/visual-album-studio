@@ -1,13 +1,25 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Phase 7 complete and capstone audit complete on product paths (merged to `main` and pushed to GitHub)
-**Last updated:** 2026-02-16
+**Current state:** Phase 7 complete on product paths; production-hardening sprint in progress on `codex/bootstrap-tests-docs-v1` (not yet merged to `main`)
+**Last updated:** 2026-02-22
 
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
 - Gate policy remains strict: no phase advancement until the current phase acceptance gate passes and prior gates remain green.
+
+## Hardening Sprint Snapshot (2026-02-22)
+- [x] CI quality workflow aligned to repo-native verification flow (`.github/workflows/quality-gates.yml` no longer uses Node lockfile-dependent install steps).
+- [x] Security audit strict mode (`VAS_SECURITY_STRICT=1`) now passes with no active waiver entries in `docs/security-waivers.json`.
+- [x] FFmpeg checksum placeholders removed from `tools/ffmpeg/checksums.json`; bootstrap enforces non-placeholder checksum policy and verifies managed binary when present.
+- [x] YouTube runtime adapter upgraded from mock-only methods to a production envelope contract (`ok`, `error_code`, `http_status`, `retryable`, `data`) via `scripts/youtube_adapter.py` bridge.
+- [x] Publish core received upload step APIs (`start_upload_session`, `resume_upload_step`, `finalize_upload`) wired to adapter contract.
+- [x] Legacy core_py security findings remediated (mapping eval removed, subprocess boundaries validated, assert runtime guards replaced).
+- [x] Live validation TLS trust path hardened in `scripts/test/live_validation.py` (CA bundle resolution via `VAS_SSL_CA_BUNDLE`/`SSL_CERT_FILE`/`certifi`).
+- [x] Regression confidence rerun:
+  - `bash .codex/scripts/run_verify_commands.sh` passed
+  - `./scripts/test/capstone_audit.sh` passed with `live_closeout=pass` when `scripts/test/live.env` is present
 
 ## Historical Note (non-gating)
 - Legacy harness suites in `app/tests_py/**` and acceptance wrappers in `scripts/test/acceptance_phase_0*.sh` previously passed on 2026-02-16.
@@ -155,7 +167,10 @@
 - Closed: branch hygiene cleanup complete; local branches reduced to `main` only.
 - Closed: pinned Godot `4.4.x` gate rerun completed successfully.
 - Closed: live provider validation blocker for Phase 5/6.
+- Closed: strict Bandit waiver burn-down complete; strict security audit now passes without `bandit_findings` waiver.
+- Closed: capstone live-closeout pending state on credentialed environments (`scripts/test/capstone_audit.sh` now sources `scripts/test/live.env` when available).
 - Open follow-up (LOW): Rust transitive advisory lifecycle tracking issue [#1](https://github.com/saagar210/visual-album-studio/issues/1) for warning-level upstream maintenance advisories in the keyring dependency graph.
+- Open follow-up (MEDIUM): mainline truth drift remains; hardening changes currently exist on `codex/bootstrap-tests-docs-v1` and require merge/sync to `main`.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
@@ -163,3 +178,4 @@
 - ASM-202: Final 100% completion requires all `PENDING_LIVE_VALIDATION` tags to be cleared.
 - ASM-203: No new product requirements are introduced beyond `docs/**`.
 - ASM-204: Continuous execution proceeds phase-by-phase, with blocker-aware parallelization inside phase boundaries only.
+- ASM-205: Strict security mode in CI permits only explicit time-boxed waivers documented in `docs/security-waivers.json`.

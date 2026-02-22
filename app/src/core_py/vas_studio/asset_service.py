@@ -1,6 +1,6 @@
 import hashlib
 import json
-import subprocess
+import subprocess  # nosec B404
 import shutil
 import time
 from pathlib import Path
@@ -58,9 +58,12 @@ class AssetService:
         return p / f"{sha256}.wav"
 
     def _decode_canonical_audio(self, src: Path, dst: Path) -> None:
+        ffmpeg_bin = str(self.ffmpeg_bin).strip()
+        if not ffmpeg_bin:
+            raise VasError("E_FFMPEG_FAILED", "ffmpeg binary is not configured")
         result = subprocess.run(
             [
-                self.ffmpeg_bin,
+                ffmpeg_bin,
                 "-y",
                 "-i",
                 str(src),
@@ -76,7 +79,7 @@ class AssetService:
             capture_output=True,
             text=True,
             check=False,
-        )
+        )  # nosec B603
         if result.returncode != 0:
             raise VasError(
                 "E_FFMPEG_FAILED",

@@ -5,7 +5,7 @@
     "channel": "stable"
   },
   "ffmpeg": {
-    "version": "7.1.x",
+    "version": "8.0.1",
     "license_mode_default": "lgpl",
     "managed_root": "tools/ffmpeg"
   },

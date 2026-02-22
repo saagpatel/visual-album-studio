@@ -3,15 +3,17 @@
   "artifacts": [
     {
       "platform": "darwin-arm64",
-      "version": "7.1.x",
+      "version": "8.0.1",
       "filename": "ffmpeg",
-      "sha256": "REPLACE_WITH_PINNED_SHA256"
+      "sha256": "0a96da2735695308d964e25fa6f4a0db2e9d24031390360f4c5ff96a4f8938e5",
+      "source": "homebrew ffmpeg 8.0.1 arm64"
     },
     {
       "platform": "darwin-x86_64",
-      "version": "7.1.x",
+      "version": "8.0.1",
       "filename": "ffmpeg",
-      "sha256": "REPLACE_WITH_PINNED_SHA256"
+      "sha256": "430d60fbf419dab28daee9b679e7929a31ee9bae53f6e42e8ae26b725584290f",
+      "source": "evermeet ffmpeg-8.0.1.zip x86_64"
     }
   ]
 }

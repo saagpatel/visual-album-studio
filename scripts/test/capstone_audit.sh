@@ -45,6 +45,12 @@ run_step "security_audit" ./scripts/test/security_audit.sh
 run_step "repo_hygiene_audit" ./scripts/test/repo_hygiene_audit.sh
 
 echo "== live_closeout ==" | tee -a "$SUMMARY"
+if [[ -f "./scripts/test/live.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ./scripts/test/live.env
+  set +a
+fi
 set +e
 ./scripts/test/live_closeout.sh | tee -a "$SUMMARY"
 LIVE_RC=$?

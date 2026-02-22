@@ -13,6 +13,7 @@ import base64
 import datetime as dt
 import json
 import os
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -49,6 +50,24 @@ def _env(name: str) -> str:
     return os.environ.get(name, "").strip()
 
 
+def _ssl_context() -> ssl.SSLContext:
+    cafile = _env("VAS_SSL_CA_BUNDLE") or _env("SSL_CERT_FILE")
+    if not cafile:
+        try:
+            import certifi  # type: ignore
+
+            cafile = certifi.where()
+        except Exception:
+            cafile = ""
+    if cafile:
+        return ssl.create_default_context(cafile=cafile)
+    return ssl.create_default_context()
+
+
+def _urlopen(req: urllib.request.Request, timeout: int):
+    return urllib.request.urlopen(req, timeout=timeout, context=_ssl_context())
+
+
 def _http_json(method: str, url: str, *, headers: Optional[Dict[str, str]] = None, payload: Optional[Dict[str, Any]] = None) -> Tuple[int, Dict[str, Any], Dict[str, str], str]:
     data = None
     req_headers = {"Accept": "application/json"}
@@ -59,7 +78,7 @@ def _http_json(method: str, url: str, *, headers: Optional[Dict[str, str]] = Non
         req_headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url=url, data=data, headers=req_headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _urlopen(req, timeout=30) as resp:
             body = resp.read().decode("utf-8", errors="replace")
             parsed = json.loads(body) if body else {}
             resp_headers = {k.lower(): v for k, v in resp.headers.items()}
@@ -86,7 +105,7 @@ def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str
     ).encode("utf-8")
     req = urllib.request.Request(TOKEN_URL, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _urlopen(req, timeout=30) as resp:
             payload = json.loads(resp.read().decode("utf-8", errors="replace"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -185,7 +204,7 @@ def _phase5(access_token: str) -> Dict[str, Any]:
                     },
                 )
                 try:
-                    with urllib.request.urlopen(req1, timeout=60) as r1:
+                    with _urlopen(req1, timeout=60) as r1:
                         # some servers may complete for tiny files
                         _ = r1.read()
                         code1 = r1.status
@@ -204,7 +223,7 @@ def _phase5(access_token: str) -> Dict[str, Any]:
                     },
                 )
                 try:
-                    with urllib.request.urlopen(req2, timeout=120) as r2:
+                    with _urlopen(req2, timeout=120) as r2:
                         body2 = r2.read().decode("utf-8", errors="replace")
                         code2 = r2.status
                         parsed2 = json.loads(body2) if body2 else {}

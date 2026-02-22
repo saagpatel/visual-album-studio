@@ -1,6 +1,8 @@
 extends RefCounted
 class_name PublishService
 
+const YouTubeApiAdapter = preload("res://src/adapters/youtube_api_adapter.gd")
+
 class UploadSession:
 	extends RefCounted
 	var session_id: String
@@ -75,6 +77,83 @@ class ChannelBindingGuard:
 	func validate(selected_channel_id: String, profile_channel_id: String) -> bool:
 		return selected_channel_id == profile_channel_id
 
+var youtube_adapter
+
+func _init(p_youtube_adapter = null) -> void:
+	youtube_adapter = p_youtube_adapter if p_youtube_adapter != null else YouTubeApiAdapter.new()
+
+func set_access_token(access_token: String) -> void:
+	if youtube_adapter != null and youtube_adapter.has_method("set_access_token"):
+		youtube_adapter.set_access_token(access_token)
+
+func list_channels() -> Dictionary:
+	if youtube_adapter == null:
+		return _publish_err("E_YT_ADAPTER_UNAVAILABLE", 0, true, {})
+	return _normalize_adapter_result(youtube_adapter.list_channels())
+
+func start_upload_session(
+	file_path: String,
+	metadata: Dictionary,
+	selected_channel_id: String = "",
+	profile_channel_id: String = ""
+) -> Dictionary:
+	var guard = ChannelBindingGuard.new()
+	if selected_channel_id != "" and profile_channel_id != "" and not guard.validate(selected_channel_id, profile_channel_id):
+		return _publish_err("E_CHANNEL_INVALID", 400, false, {"selected_channel_id": selected_channel_id, "profile_channel_id": profile_channel_id})
+
+	var quota = QuotaBudget.new(int(metadata.get("quota_budget", 10000)))
+	quota.used = int(metadata.get("quota_used", 0))
+	var with_thumbnail = bool(metadata.get("with_thumbnail", true))
+	var with_playlist = bool(metadata.get("with_playlist", false))
+	var estimated = quota.estimate_publish(with_thumbnail, with_playlist)
+	if not quota.can_run(estimated):
+		return _publish_err("E_YT_QUOTA_EXCEEDED", 429, false, {"estimated_units": estimated, "used": quota.used, "budget": quota.daily_budget})
+
+	if youtube_adapter == null:
+		return _publish_err("E_YT_ADAPTER_UNAVAILABLE", 0, true, {})
+	var started = _normalize_adapter_result(youtube_adapter.start_resumable_upload(file_path, metadata))
+	if not bool(started.get("ok", false)):
+		return started
+	var data: Dictionary = started.get("data", {})
+	data["quota_estimate"] = estimated
+	started["data"] = data
+	return started
+
+func resume_upload_step(
+	session_url: String,
+	file_path: String,
+	bytes_uploaded: int,
+	chunk_size: int = 8 * 1024 * 1024
+) -> Dictionary:
+	if youtube_adapter == null:
+		return _publish_err("E_YT_ADAPTER_UNAVAILABLE", 0, true, {})
+	return _normalize_adapter_result(
+		youtube_adapter.resume_upload(
+			session_url,
+			file_path,
+			bytes_uploaded,
+			chunk_size
+		)
+	)
+
+func finalize_upload(video_id: String, metadata: Dictionary, thumbnail_path: String = "") -> Dictionary:
+	if youtube_adapter == null:
+		return _publish_err("E_YT_ADAPTER_UNAVAILABLE", 0, true, {})
+	var meta_result = _normalize_adapter_result(youtube_adapter.apply_metadata(video_id, metadata))
+	if not bool(meta_result.get("ok", false)):
+		return meta_result
+
+	if thumbnail_path != "":
+		var thumb_result = _normalize_adapter_result(youtube_adapter.upload_thumbnail(video_id, thumbnail_path))
+		if not bool(thumb_result.get("ok", false)):
+			return thumb_result
+
+	return _publish_ok({
+		"video_id": video_id,
+		"metadata_applied": true,
+		"thumbnail_applied": thumbnail_path != "",
+	})
+
 func pkce_pair() -> Dictionary:
 	var verifier = _urlsafe_base64(Crypto.new().generate_random_bytes(32))
 	var hash = HashingContext.new()
@@ -90,3 +169,33 @@ func _urlsafe_base64(bytes: PackedByteArray) -> String:
 	var encoded = Marshalls.raw_to_base64(bytes)
 	encoded = encoded.replace("+", "-").replace("/", "_").replace("=", "")
 	return encoded
+
+func _normalize_adapter_result(raw_result: Dictionary) -> Dictionary:
+	var ok = bool(raw_result.get("ok", false))
+	var error_code = String(raw_result.get("error_code", ""))
+	var http_status = int(raw_result.get("http_status", 0))
+	var retryable = bool(raw_result.get("retryable", false))
+	var data = raw_result.get("data", {})
+	if typeof(data) != TYPE_DICTIONARY:
+		data = {"raw": data}
+	if ok:
+		return _publish_ok(data, http_status)
+	return _publish_err(error_code if error_code != "" else "E_YT_ADAPTER_FAILED", http_status, retryable, data)
+
+func _publish_ok(data: Dictionary, http_status: int = 200) -> Dictionary:
+	return {
+		"ok": true,
+		"error_code": "",
+		"http_status": http_status,
+		"retryable": false,
+		"data": data,
+	}
+
+func _publish_err(error_code: String, http_status: int, retryable: bool, data: Dictionary) -> Dictionary:
+	return {
+		"ok": false,
+		"error_code": error_code,
+		"http_status": http_status,
+		"retryable": retryable,
+		"data": data,
+	}

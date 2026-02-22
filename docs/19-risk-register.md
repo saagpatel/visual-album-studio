@@ -34,3 +34,15 @@ Scales:
 | RSK-022 | Accessibility regressions create keyboard traps and unusable critical paths. | High | Medium | Keyboard/focus contract tests; reduced-motion support; contrast baselines in component tokens. | TS-014, IT-012, AT-007 accessibility checks. | S/C (Phase 7) |
 | RSK-023 | Diagnostics bundles leak sensitive information through new support UX. | High | Low | Redaction pipeline as hard gate; schema validation; no environment dumps with secrets. | TS-015 and AT-007 diagnostics redaction assertions. | T/S/I/L/P (Phase 7) |
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
+
+## Recent updates (2026-02-22)
+- RSK-009 mitigation strengthened:
+  - `scripts/bootstrap.sh` now enforces checksum-field validity in `tools/ffmpeg/checksums.json` and verifies managed FFmpeg binary checksums when present.
+- RSK-011/RSK-014 mitigation strengthened:
+  - `app/src/adapters/youtube_api_adapter.gd` now uses a real runtime sidecar (`scripts/youtube_adapter.py`) with structured retryable error envelopes instead of mock-only adapter behavior.
+- RSK-019 mitigation strengthened:
+  - `scripts/test/security_audit.sh` supports strict mode and explicit owner+expiry waivers via `docs/security-waivers.json`.
+- RSK-019 follow-up closure:
+  - strict security audit now passes with `VAS_SECURITY_STRICT=1` and no active waivers; `docs/security-waivers.json` reset to an empty waiver list.
+- RSK-011/RSK-014 operational closure update:
+  - `scripts/test/live_validation.py` now resolves trusted CA bundles via `VAS_SSL_CA_BUNDLE`, `SSL_CERT_FILE`, and `certifi`, and `scripts/test/capstone_audit.sh` auto-loads `scripts/test/live.env` when available so live closeout can execute in the capstone path on credentialed environments.

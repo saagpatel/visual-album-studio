@@ -1,6 +1,7 @@
 extends SceneTree
 
 const PublishService = preload("res://src/core/publish_service.gd")
+const YouTubeApiAdapter = preload("res://src/adapters/youtube_api_adapter.gd")
 
 func _init() -> void:
 	randomize()
@@ -42,6 +43,58 @@ func _run() -> int:
 	quota.consume(est)
 	quota.consume(est)
 	if not _assert_true(not quota.can_run(est), "quota budget exhausted"):
+		return 1
+
+	var upload_file = tmp_dir.path_join("upload.bin")
+	var upload_data = PackedByteArray()
+	upload_data.resize(4096)
+	var upload_writer = FileAccess.open(upload_file, FileAccess.WRITE)
+	if upload_writer == null:
+		printerr("[FAIL] unable to create upload fixture")
+		return 1
+	upload_writer.store_buffer(upload_data)
+	upload_writer.close()
+
+	var mock_adapter = YouTubeApiAdapter.new("python3", "scripts/youtube_adapter.py", "", true)
+	var publish_runtime = PublishService.new(mock_adapter)
+	var started = publish_runtime.start_upload_session(
+		upload_file,
+		{
+			"title": "Acceptance Upload",
+			"quota_budget": 500,
+			"quota_used": 0,
+			"with_thumbnail": true,
+			"with_playlist": false,
+		},
+		"ch_A",
+		"ch_A"
+	)
+	if not _assert_true(bool(started.get("ok", false)), "publish session start"):
+		return 1
+	var start_data: Dictionary = started.get("data", {})
+	if not _assert_true(start_data.has("session_url"), "adapter envelope includes session_url"):
+		return 1
+
+	var resumed = publish_runtime.resume_upload_step(
+		String(start_data.get("session_url", "")),
+		upload_file,
+		0,
+		8192
+	)
+	if not _assert_true(bool(resumed.get("ok", false)), "publish session resume"):
+		return 1
+	var resume_data: Dictionary = resumed.get("data", {})
+	if not _assert_true(bool(resume_data.get("complete", false)), "resume reaches complete state"):
+		return 1
+	if not _assert_true(String(resume_data.get("video_id", "")).length() > 0, "resume provides video id"):
+		return 1
+
+	var finalized = publish_runtime.finalize_upload(
+		String(resume_data.get("video_id", "")),
+		{"title": "Acceptance Upload"},
+		""
+	)
+	if not _assert_true(bool(finalized.get("ok", false)), "publish finalize metadata"):
 		return 1
 
 	print("AT-005 product-path acceptance passed")
