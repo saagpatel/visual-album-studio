@@ -1,5 +1,5 @@
 import shlex
-import subprocess
+import subprocess  # nosec B404
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Iterable, Optional
@@ -20,8 +20,10 @@ class FFmpegAdapter:
 
     def run(self, args: Iterable[str], on_progress: Optional[Callable[[Dict[str, str]], None]] = None) -> None:
         cmd = [self.ffmpeg_bin, *args, "-progress", "pipe:1", "-nostats", "-hide_banner"]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        assert proc.stdout is not None
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)  # nosec B603
+        if proc.stdout is None:
+            proc.terminate()
+            raise VasError("E_FFMPEG_FAILED", "ffmpeg progress stream unavailable", recoverable=True)
 
         progress: Dict[str, str] = {}
         for line in proc.stdout:
@@ -45,13 +47,13 @@ class FFmpegAdapter:
             )
 
     def ffmpeg_version(self) -> str:
-        result = subprocess.run([self.ffmpeg_bin, "-version"], capture_output=True, text=True, check=False)
+        result = subprocess.run([self.ffmpeg_bin, "-version"], capture_output=True, text=True, check=False)  # nosec B603
         if result.returncode != 0:
             raise VasError("E_FFMPEG_NOT_FOUND", "Unable to run ffmpeg")
         return result.stdout.splitlines()[0].strip()
 
     def preferred_h264_encoder(self) -> str:
-        result = subprocess.run([self.ffmpeg_bin, "-encoders"], capture_output=True, text=True, check=False)
+        result = subprocess.run([self.ffmpeg_bin, "-encoders"], capture_output=True, text=True, check=False)  # nosec B603
         if result.returncode != 0:
             return "libx264"
 

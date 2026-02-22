@@ -421,6 +421,17 @@ Examples: `job.progress`, `asset.imported`, `analysis.ready`, `export.completed`
 - `pause_upload(job_id) -> void`
 - `resume_upload(job_id) -> void`
 - `unlink_channel(channel_id) -> void`
+- Runtime adapter contract for upload execution:
+  - `start_upload_session(file_path, metadata, selected_channel_id, profile_channel_id) -> UploadEnvelope`
+  - `resume_upload_step(session_url, file_path, bytes_uploaded, chunk_size) -> UploadEnvelope`
+  - `finalize_upload(video_id, metadata, thumbnail_path) -> UploadEnvelope`
+
+`UploadEnvelope` shape:
+- `ok: bool`
+- `error_code: string`
+- `http_status: int`
+- `retryable: bool`
+- `data: dict`
 
 ### Errors
 - `E_OAUTH_FAILED`

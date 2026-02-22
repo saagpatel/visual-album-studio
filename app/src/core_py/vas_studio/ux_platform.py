@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -184,9 +184,10 @@ class UxPlatformService:
         out_dir.mkdir(parents=True, exist_ok=True)
         issues: list[str] = []
 
-        ffmpeg_available = shutil.which(ffmpeg_bin) is not None
+        ffmpeg_exec = shutil.which(ffmpeg_bin) if ffmpeg_bin else None
+        ffmpeg_available = ffmpeg_exec is not None
         if ffmpeg_available:
-            probe = subprocess.run([ffmpeg_bin, "-version"], capture_output=True, text=True, check=False)
+            probe = subprocess.run([str(ffmpeg_exec), "-version"], capture_output=True, text=True, check=False)  # nosec B603
             ffmpeg_available = probe.returncode == 0
         if not ffmpeg_available:
             issues.append("ffmpeg_missing")

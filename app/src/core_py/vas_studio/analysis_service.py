@@ -1,5 +1,5 @@
 import json
-import subprocess
+import subprocess  # nosec B404
 import time
 from pathlib import Path
 
@@ -26,19 +26,23 @@ class AnalysisService:
         if existing:
             return existing["id"]
 
+        worker_cmd = self._validated_worker_cmd()
         req = {"audio_path": str(audio_path)}
         proc = subprocess.Popen(
-            self.worker_cmd,
+            worker_cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-        )
-        assert proc.stdin and proc.stdout
+        )  # nosec B603
+        if proc.stdin is None or proc.stdout is None:
+            proc.terminate()
+            raise VasError("E_WORKER_UNAVAILABLE", "Analysis worker stream setup failed")
         proc.stdin.write(json.dumps(req) + "\n")
         proc.stdin.flush()
         line = proc.stdout.readline().strip()
         proc.terminate()
+        proc.wait(timeout=5)
 
         if not line:
             raise VasError("E_WORKER_UNAVAILABLE", "Analysis worker returned no result")
@@ -68,6 +72,16 @@ class AnalysisService:
         )
         self.db.commit()
         return cache_id
+
+    def _validated_worker_cmd(self) -> list[str]:
+        if not isinstance(self.worker_cmd, list) or not self.worker_cmd:
+            raise VasError("E_WORKER_CMD_INVALID", "Analysis worker command is not configured")
+        sanitized: list[str] = []
+        for item in self.worker_cmd:
+            if not isinstance(item, str) or not item.strip():
+                raise VasError("E_WORKER_CMD_INVALID", "Analysis worker command contains an invalid token")
+            sanitized.append(item.strip())
+        return sanitized
 
     def get_analysis(self, audio_asset_id: str, analysis_version: str):
         return self.db.execute(
