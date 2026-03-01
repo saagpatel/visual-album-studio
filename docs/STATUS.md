@@ -160,6 +160,25 @@
 - Milestone state:
   - `M2` is in progress; remaining Train 2 work is scoped in issue `#9`.
 
+## V2 Train 2 Closure (2026-03-01)
+- Train 2 closure merged to `main` on:
+  - `ca09037b42e2bf130567b4ad5fb48f7f997de829`
+- Train 2 acceptance and traceability evidence finalized:
+  - `app/tests_py/acceptance/test_atv2201_train2.py`
+  - `app/tests_py/unit/test_tsv2_201_mode_contracts.py`
+  - `app/tests_py/unit/test_tsv2_203_model_eval_harness.py`
+  - `app/tests_py/integration/test_itv2_202_model_registry_provenance.py`
+  - `app/tests_py/integration/test_itv2_203_model_fallback_behavior.py`
+  - `app/tests_py/integration/test_itv2_204_model_eval_harness.py`
+- Train 2 closure verification on merged SHA:
+  - `bash scripts/test/acceptance_v2_train2.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T15:09:45Z`
+- Milestone state:
+  - `M0` complete, `M1` complete, `M2` complete, `M3` next active implementation lane.
+
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
