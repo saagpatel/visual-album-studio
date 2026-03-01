@@ -229,8 +229,10 @@
   - `docs/security-waivers.json`: empty waiver list
 
 ## V2 GA Closeout Declaration (2026-03-01)
-- Canonical merged SHA:
-  - `db9602048675a476ee70302a1509b685b3f3a857` (`main` == `origin/main`)
+- Release closeout SHA:
+  - `db9602048675a476ee70302a1509b685b3f3a857`
+- Post-closeout documentation stamp SHA:
+  - `7d5c1d3e50fe96fe850cf7359f78f3892680388f` (`main` == `origin/main`)
 - Final release tags:
   - `v2.4.0`
   - `v2-closeout-2026-03-01`
@@ -252,7 +254,7 @@
   - `#11` closed with evidence comment
   - `#12` closed with evidence comment
 - Completion statement:
-  - V2 scope (`RQ-V2-001..505`, `AT-V2-000/101/201/301/401/501`) is complete and closed out on the canonical SHA with no active waivers.
+  - V2 scope (`RQ-V2-001..505`, `AT-V2-000/101/201/301/401/501`) is complete; release closeout SHA is tagged and post-closeout docs stamp remains fully green with no active waivers.
 
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.

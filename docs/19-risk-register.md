@@ -37,7 +37,8 @@ Scales:
 
 ## Recent updates (2026-03-01)
 - V2 GA closeout declaration:
-  - canonical SHA `db9602048675a476ee70302a1509b685b3f3a857` with tags `v2.4.0` and `v2-closeout-2026-03-01` published.
+  - release closeout SHA `db9602048675a476ee70302a1509b685b3f3a857` with tags `v2.4.0` and `v2-closeout-2026-03-01` published.
+  - post-closeout docs stamp SHA `7d5c1d3e50fe96fe850cf7359f78f3892680388f` revalidated with strict capstone pass.
   - release-blocking milestone issues `#10/#11/#12` closed with evidence-linked comments.
 - V2 M3 closure update:
   - Distribution/provider expansion controls delivered and verified (`AT-V2-301` pass).

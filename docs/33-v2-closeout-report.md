@@ -4,7 +4,8 @@
 Declare V2 general availability closeout on one canonical SHA with full acceptance, strict verify/capstone evidence, and residual-risk ownership.
 
 ## Final candidate SHA + tag
-- Candidate SHA: `db9602048675a476ee70302a1509b685b3f3a857` (`main` == `origin/main`)
+- Release closeout SHA: `db9602048675a476ee70302a1509b685b3f3a857`
+- Post-closeout docs stamp SHA: `7d5c1d3e50fe96fe850cf7359f78f3892680388f`
 - GA tag: `v2.4.0`
 - Closeout checkpoint tag: `v2-closeout-2026-03-01`
 
@@ -38,4 +39,4 @@ Declare V2 general availability closeout on one canonical SHA with full acceptan
 | Single-owner bus factor | `saagar210` | Runbook/evidence cadence maintained in STATUS + risk register | Weekly |
 
 ## Final signoff statement
-V2 is complete on `db9602048675a476ee70302a1509b685b3f3a857`: all required gates are green on the canonical SHA, both release tags are published, no active waivers remain, and release-blocking issues (`#10`, `#11`, `#12`) are closed.
+V2 is complete with release closeout SHA `db9602048675a476ee70302a1509b685b3f3a857` and follow-up documentation stamp on `7d5c1d3e50fe96fe850cf7359f78f3892680388f`: all required gates are green, release tags are published, no active waivers remain, and release-blocking issues (`#10`, `#11`, `#12`) are closed.
