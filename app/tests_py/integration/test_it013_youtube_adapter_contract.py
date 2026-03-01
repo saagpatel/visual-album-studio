@@ -50,3 +50,17 @@ def test_it013_start_upload_file_guard(repo_root: Path):
     assert result["ok"] is False
     assert result["error_code"] == "E_YT_FILE_NOT_FOUND"
     assert result["http_status"] == 0
+
+
+def test_it013_attach_playlists_input_guard(repo_root: Path):
+    result = _run(
+        repo_root,
+        "attach_playlists",
+        {
+            "access_token": "fake-token",
+            "video_id": "v123",
+            "playlist_ids": "not-a-list",
+        },
+    )
+    assert result["ok"] is False
+    assert result["error_code"] == "E_YT_PLAYLIST_INPUT_INVALID"

@@ -95,14 +95,25 @@ func start_upload_session(
 	file_path: String,
 	metadata: Dictionary,
 	selected_channel_id: String = "",
-	profile_channel_id: String = ""
+	profile_channel_id: String = "",
+	channel_profile_id: String = "",
+	quota_policy: Dictionary = {}
 ) -> Dictionary:
+	var effective_profile_id = channel_profile_id.strip_edges()
+	if effective_profile_id == "":
+		effective_profile_id = profile_channel_id if profile_channel_id != "" else selected_channel_id
+	if effective_profile_id == "":
+		return _publish_err("E_CHANNEL_PROFILE_REQUIRED", 400, false, {})
+
 	var guard = ChannelBindingGuard.new()
 	if selected_channel_id != "" and profile_channel_id != "" and not guard.validate(selected_channel_id, profile_channel_id):
 		return _publish_err("E_CHANNEL_INVALID", 400, false, {"selected_channel_id": selected_channel_id, "profile_channel_id": profile_channel_id})
 
-	var quota = QuotaBudget.new(int(metadata.get("quota_budget", 10000)))
-	quota.used = int(metadata.get("quota_used", 0))
+	var merged_quota_policy = quota_policy.duplicate(true)
+	if merged_quota_policy.is_empty():
+		merged_quota_policy = metadata.get("quota_policy", {}).duplicate(true) if typeof(metadata.get("quota_policy", {})) == TYPE_DICTIONARY else {}
+	var quota = QuotaBudget.new(int(merged_quota_policy.get("daily_budget", metadata.get("quota_budget", 10000))))
+	quota.used = int(merged_quota_policy.get("used", metadata.get("quota_used", 0)))
 	var with_thumbnail = bool(metadata.get("with_thumbnail", true))
 	var with_playlist = bool(metadata.get("with_playlist", false))
 	var estimated = quota.estimate_publish(with_thumbnail, with_playlist)
@@ -115,7 +126,10 @@ func start_upload_session(
 	if not bool(started.get("ok", false)):
 		return started
 	var data: Dictionary = started.get("data", {})
+	data["channel_profile_id"] = effective_profile_id
 	data["quota_estimate"] = estimated
+	data["bytes_total"] = int(data.get("bytes_total", 0))
+	data["bytes_uploaded"] = int(data.get("bytes_uploaded", 0))
 	started["data"] = data
 	return started
 
@@ -127,7 +141,7 @@ func resume_upload_step(
 ) -> Dictionary:
 	if youtube_adapter == null:
 		return _publish_err("E_YT_ADAPTER_UNAVAILABLE", 0, true, {})
-	return _normalize_adapter_result(
+	var resumed = _normalize_adapter_result(
 		youtube_adapter.resume_upload(
 			session_url,
 			file_path,
@@ -135,23 +149,62 @@ func resume_upload_step(
 			chunk_size
 		)
 	)
+	var data = resumed.get("data", {})
+	if typeof(data) == TYPE_DICTIONARY:
+		var d: Dictionary = data
+		if not d.has("resume_offset"):
+			d["resume_offset"] = int(d.get("bytes_uploaded", 0))
+		resumed["data"] = d
+	return resumed
 
 func finalize_upload(video_id: String, metadata: Dictionary, thumbnail_path: String = "") -> Dictionary:
+	if video_id.strip_edges() == "":
+		return _publish_err("E_YT_VIDEO_ID_REQUIRED", 400, false, {})
 	if youtube_adapter == null:
 		return _publish_err("E_YT_ADAPTER_UNAVAILABLE", 0, true, {})
 	var meta_result = _normalize_adapter_result(youtube_adapter.apply_metadata(video_id, metadata))
 	if not bool(meta_result.get("ok", false)):
 		return meta_result
 
+	var playlist_applied = false
+	var playlist_ids: Array = metadata.get("playlistIds", [])
+	if not playlist_ids.is_empty():
+		if youtube_adapter.has_method("attach_playlists"):
+			var playlist_result = _normalize_adapter_result(youtube_adapter.attach_playlists(video_id, playlist_ids))
+			if not bool(playlist_result.get("ok", false)):
+				return playlist_result
+			playlist_applied = true
+		else:
+			return _publish_err("E_YT_PLAYLIST_UNSUPPORTED", 400, false, {"playlist_count": playlist_ids.size()})
+
+	var schedule_verified = true
+	var publish_at = String(metadata.get("publishAt", ""))
+	if publish_at != "":
+		schedule_verified = false
+		if youtube_adapter.has_method("readback_video"):
+			var readback = _normalize_adapter_result(youtube_adapter.readback_video(video_id))
+			if not bool(readback.get("ok", false)):
+				return readback
+			var read_data: Dictionary = readback.get("data", {})
+			var status = read_data.get("status", {})
+			if typeof(status) == TYPE_DICTIONARY:
+				schedule_verified = String(status.get("privacyStatus", "")) == "private"
+		if not schedule_verified:
+			return _publish_err("E_YT_SCHEDULE_READBACK_FAILED", 409, true, {"video_id": video_id})
+
+	var thumbnail_applied = false
 	if thumbnail_path != "":
 		var thumb_result = _normalize_adapter_result(youtube_adapter.upload_thumbnail(video_id, thumbnail_path))
 		if not bool(thumb_result.get("ok", false)):
 			return thumb_result
+		thumbnail_applied = true
 
 	return _publish_ok({
 		"video_id": video_id,
 		"metadata_applied": true,
-		"thumbnail_applied": thumbnail_path != "",
+		"thumbnail_applied": thumbnail_applied,
+		"playlist_applied": playlist_applied,
+		"schedule_verified": schedule_verified,
 	})
 
 func pkce_pair() -> Dictionary:

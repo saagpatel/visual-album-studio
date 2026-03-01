@@ -30,6 +30,7 @@ echo "head_sha=$(git rev-parse HEAD 2>/dev/null || echo unknown)" >> "$SUMMARY"
 echo "" >> "$SUMMARY"
 
 run_step "baseline_snapshot" ./scripts/test/capstone_baseline.sh
+run_step "bootstrap" ./scripts/bootstrap.sh
 run_step "unit" ./scripts/test/unit.sh
 run_step "integration" ./scripts/test/integration.sh
 run_step "acceptance_phase_01" ./scripts/test/acceptance_phase_01.sh
@@ -45,6 +46,16 @@ run_step "security_audit" ./scripts/test/security_audit.sh
 run_step "repo_hygiene_audit" ./scripts/test/repo_hygiene_audit.sh
 
 echo "== live_closeout ==" | tee -a "$SUMMARY"
+PRESET_VAS_YT_TEST_VIDEO_PATH="${VAS_YT_TEST_VIDEO_PATH:-}"
+if [[ -f "./scripts/test/live.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source ./scripts/test/live.env
+  set +a
+fi
+if [[ -n "$PRESET_VAS_YT_TEST_VIDEO_PATH" ]]; then
+  export VAS_YT_TEST_VIDEO_PATH="$PRESET_VAS_YT_TEST_VIDEO_PATH"
+fi
 set +e
 ./scripts/test/live_closeout.sh | tee -a "$SUMMARY"
 LIVE_RC=$?

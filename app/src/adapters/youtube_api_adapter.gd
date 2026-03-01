@@ -51,6 +51,8 @@ func resume_upload(session_url: String, file_path: String, bytes_uploaded: int, 
 			"session_url": session_url,
 			"bytes_total": total,
 			"bytes_uploaded": uploaded,
+			"resume_offset": uploaded,
+			"etag": "mock-etag",
 			"complete": uploaded >= total,
 			"video_id": "mock-video-id" if uploaded >= total else "",
 		}, 308 if uploaded < total else 200)
@@ -77,6 +79,19 @@ func upload_thumbnail(video_id: String, thumbnail_path: String) -> Dictionary:
 		"video_id": video_id,
 		"thumbnail_path": thumbnail_path,
 	})
+
+func attach_playlists(video_id: String, playlist_ids: Array) -> Dictionary:
+	if use_mock:
+		return _ok({"video_id": video_id, "playlist_ids": playlist_ids}, 200)
+	return _call("attach_playlists", {
+		"video_id": video_id,
+		"playlist_ids": playlist_ids,
+	})
+
+func readback_video(video_id: String) -> Dictionary:
+	if use_mock:
+		return _ok({"id": video_id, "status": {"privacyStatus": "private"}}, 200)
+	return _call("readback_video", {"video_id": video_id})
 
 func _call(command: String, payload: Dictionary) -> Dictionary:
 	var token = access_token.strip_edges()

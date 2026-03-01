@@ -24,6 +24,13 @@ while IFS= read -r path; do
     echo "forbidden_tracked=$path"
     FAIL=1
   fi
+  if [[ "$path" == scripts/test/live.env || "$path" == *.env || "$path" == *.env.* ]]; then
+    if [[ "$path" == *.example || "$path" == *.sample ]]; then
+      continue
+    fi
+    echo "forbidden_tracked_secret_file=$path"
+    FAIL=1
+  fi
   if [[ "$path" == app/*.import || "$path" == app/*/*.import || "$path" == app/*/*/*.import ]]; then
     echo "forbidden_tracked=$path"
     FAIL=1

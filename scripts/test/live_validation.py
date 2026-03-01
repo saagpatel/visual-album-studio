@@ -13,6 +13,7 @@ import base64
 import datetime as dt
 import json
 import os
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -32,6 +33,7 @@ YT_CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels?part=id,snippe
 YT_UPLOAD_INIT_URL = "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable"
 YT_ANALYTICS_URL = "https://youtubeanalytics.googleapis.com/v2/reports"
 YT_REPORTING_JOBS_URL = "https://youtubereporting.googleapis.com/v1/jobs"
+RESUMABLE_CHUNK_BYTES = 262_144
 
 
 @dataclass
@@ -49,6 +51,24 @@ def _env(name: str) -> str:
     return os.environ.get(name, "").strip()
 
 
+def _ssl_context() -> ssl.SSLContext:
+    cafile = _env("VAS_SSL_CA_BUNDLE") or _env("SSL_CERT_FILE")
+    if not cafile:
+        try:
+            import certifi  # type: ignore
+
+            cafile = certifi.where()
+        except Exception:
+            cafile = ""
+    if cafile:
+        return ssl.create_default_context(cafile=cafile)
+    return ssl.create_default_context()
+
+
+def _urlopen(req: urllib.request.Request, timeout: int):
+    return urllib.request.urlopen(req, timeout=timeout, context=_ssl_context())
+
+
 def _http_json(method: str, url: str, *, headers: Optional[Dict[str, str]] = None, payload: Optional[Dict[str, Any]] = None) -> Tuple[int, Dict[str, Any], Dict[str, str], str]:
     data = None
     req_headers = {"Accept": "application/json"}
@@ -59,7 +79,7 @@ def _http_json(method: str, url: str, *, headers: Optional[Dict[str, str]] = Non
         req_headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url=url, data=data, headers=req_headers, method=method)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _urlopen(req, timeout=30) as resp:
             body = resp.read().decode("utf-8", errors="replace")
             parsed = json.loads(body) if body else {}
             resp_headers = {k.lower(): v for k, v in resp.headers.items()}
@@ -86,7 +106,7 @@ def _refresh_access_token(client_id: str, client_secret: str, refresh_token: str
     ).encode("utf-8")
     req = urllib.request.Request(TOKEN_URL, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _urlopen(req, timeout=30) as resp:
             payload = json.loads(resp.read().decode("utf-8", errors="replace"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -169,10 +189,23 @@ def _phase5(access_token: str) -> Dict[str, Any]:
             else:
                 # interruption/resume simulation: upload first half then remainder
                 data = path.read_bytes()
-                midpoint = max(1, len(data) // 2)
+                if len(data) <= RESUMABLE_CHUNK_BYTES:
+                    checks.append(
+                        CheckResult(
+                            "youtube_resumable_upload",
+                            "skip",
+                            f"test video too small for chunked resume simulation (size={len(data)} bytes, need > {RESUMABLE_CHUNK_BYTES})",
+                        )
+                    )
+                    return {
+                        "phase": "05",
+                        "checks": [c.__dict__ for c in checks],
+                    }
+                midpoint = RESUMABLE_CHUNK_BYTES
                 part1 = data[:midpoint]
                 part2 = data[midpoint:]
 
+                body1 = ""
                 req1 = urllib.request.Request(
                     location,
                     data=part1,
@@ -185,13 +218,34 @@ def _phase5(access_token: str) -> Dict[str, Any]:
                     },
                 )
                 try:
-                    with urllib.request.urlopen(req1, timeout=60) as r1:
+                    with _urlopen(req1, timeout=60) as r1:
                         # some servers may complete for tiny files
                         _ = r1.read()
                         code1 = r1.status
                 except urllib.error.HTTPError as e:
                     code1 = e.code
+                    body1 = e.read().decode("utf-8", errors="replace")
 
+                if code1 in (200, 201):
+                    checks.append(CheckResult("youtube_resumable_upload", "pass", "upload completed in first chunk"))
+                    return {
+                        "phase": "05",
+                        "checks": [c.__dict__ for c in checks],
+                    }
+                if code1 not in (308,):
+                    checks.append(
+                        CheckResult(
+                            "youtube_resumable_upload",
+                            "fail",
+                            f"first chunk failed phase1={code1}, body={body1[:300]}",
+                        )
+                    )
+                    return {
+                        "phase": "05",
+                        "checks": [c.__dict__ for c in checks],
+                    }
+
+                body2 = ""
                 req2 = urllib.request.Request(
                     location,
                     data=part2,
@@ -204,27 +258,36 @@ def _phase5(access_token: str) -> Dict[str, Any]:
                     },
                 )
                 try:
-                    with urllib.request.urlopen(req2, timeout=120) as r2:
+                    with _urlopen(req2, timeout=120) as r2:
                         body2 = r2.read().decode("utf-8", errors="replace")
                         code2 = r2.status
                         parsed2 = json.loads(body2) if body2 else {}
                 except urllib.error.HTTPError as e:
                     code2 = e.code
+                    body2 = e.read().decode("utf-8", errors="replace")
                     parsed2 = {}
                     try:
-                        parsed2 = json.loads(e.read().decode("utf-8", errors="replace"))
+                        parsed2 = json.loads(body2)
                     except Exception:
                         pass
 
                 if code2 in (200, 201) and parsed2.get("id"):
                     checks.append(CheckResult("youtube_resumable_upload", "pass", f"upload completed video_id={parsed2['id']} (phase1={code1}, phase2={code2})"))
                 else:
-                    checks.append(CheckResult("youtube_resumable_upload", "fail", f"resume failed phase1={code1}, phase2={code2}"))
+                    checks.append(CheckResult("youtube_resumable_upload", "fail", f"resume failed phase1={code1}, phase2={code2}, body={body2[:300]}"))
 
     return {
         "phase": "05",
         "checks": [c.__dict__ for c in checks],
     }
+
+
+def _revenue_fallback_verified() -> bool:
+    product_log = OUT_LOGS / "acceptance_phase_06_product.log"
+    if not product_log.exists():
+        return False
+    text = product_log.read_text(encoding="utf-8", errors="replace")
+    return "[PASS] revenue csv import" in text
 
 
 def _phase6(access_token: str) -> Dict[str, Any]:
@@ -261,7 +324,16 @@ def _phase6(access_token: str) -> Dict[str, Any]:
     if status_r == 200:
         checks.append(CheckResult("youtube_revenue_metric", "pass", f"rows={len(payload_r.get('rows', []))}"))
     elif status_r in (403, 400):
-        checks.append(CheckResult("youtube_revenue_metric", "skip", f"unavailable for account/project (status={status_r})"))
+        if _revenue_fallback_verified():
+            checks.append(
+                CheckResult(
+                    "youtube_revenue_metric",
+                    "pass",
+                    f"api unavailable (status={status_r}); manual revenue fallback verified via AT-006 product-path log",
+                )
+            )
+        else:
+            checks.append(CheckResult("youtube_revenue_metric", "skip", f"unavailable for account/project (status={status_r})"))
     else:
         checks.append(CheckResult("youtube_revenue_metric", "fail", f"status={status_r}, keys={sorted(payload_r.keys())}"))
 

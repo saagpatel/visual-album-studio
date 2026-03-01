@@ -84,8 +84,12 @@ python -m pip install --upgrade pip >/dev/null
 if [[ -f worker/requirements.lock ]]; then
   python -m pip install -r worker/requirements.lock >/dev/null
 fi
+python -m pip install bandit pip-audit >/dev/null
 
 cargo build --manifest-path native/vas_keyring/Cargo.toml >/dev/null
+if ! cargo audit --version >/dev/null 2>&1; then
+  cargo install cargo-audit --locked >/dev/null
+fi
 
 if command -v ffmpeg >/dev/null 2>&1; then
   ffmpeg_path="$(command -v ffmpeg)"
