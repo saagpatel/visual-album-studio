@@ -13,6 +13,7 @@ import hashlib
 import http.server
 import json
 import os
+import stat
 import secrets
 import socket
 import threading
@@ -157,6 +158,34 @@ def _wait_for_callback(
         time.sleep(0.1)
 
 
+def _masked(value: str, keep: int = 4) -> str:
+    if not value:
+        return ""
+    if len(value) <= keep:
+        return "*" * len(value)
+    return "*" * (len(value) - keep) + value[-keep:]
+
+
+def _write_env_file(path: str, client_id: str, client_secret: str, refresh_token: str) -> None:
+    abs_path = os.path.abspath(path)
+    parent = os.path.dirname(abs_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    content = "\n".join(
+        [
+            f'VAS_YT_CLIENT_ID="{client_id}"',
+            f'VAS_YT_CLIENT_SECRET="{client_secret}"',
+            f'VAS_YT_REFRESH_TOKEN="{refresh_token}"',
+            "",
+        ]
+    )
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    fd = os.open(abs_path, flags, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(content)
+    os.chmod(abs_path, stat.S_IRUSR | stat.S_IWUSR)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Get a Google OAuth refresh token for local live validation."
@@ -181,6 +210,11 @@ def main() -> int:
         "--no-browser",
         action="store_true",
         help="Do not auto-open browser; print URL only",
+    )
+    parser.add_argument(
+        "--out-file",
+        default=os.environ.get("VAS_YT_TOKEN_OUT_FILE", "scripts/test/live.env.generated"),
+        help="Write secrets to this env file (default: scripts/test/live.env.generated)",
     )
     args = parser.parse_args()
 
@@ -246,13 +280,14 @@ def main() -> int:
         print("hint: ensure prompt=consent and revoke prior grant before retry if needed.")
         return 1
 
-    print("")
-    print("Copy these values into scripts/test/live.env:")
-    print(f'VAS_YT_CLIENT_ID="{client_id}"')
-    print(f'VAS_YT_CLIENT_SECRET="{client_secret}"')
-    print(f'VAS_YT_REFRESH_TOKEN="{refresh_token}"')
+    _write_env_file(args.out_file, client_id, client_secret, refresh_token)
     print("")
     print("success: refresh token acquired")
+    print(f"wrote secure env file: {os.path.abspath(args.out_file)}")
+    print(f"client_id: {_masked(client_id)}")
+    print(f"client_secret: {_masked(client_secret)}")
+    print(f"refresh_token: {_masked(refresh_token)}")
+    print("next: use this file for local live-validation setup")
     return 0
 
 

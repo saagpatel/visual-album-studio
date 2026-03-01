@@ -19,12 +19,26 @@ fn main() {
 
     match cmd.as_str() {
         "set" => {
-            if args.len() != 5 {
+            if args.len() < 4 || args.len() > 5 {
                 usage();
                 std::process::exit(2);
             }
-            let secret = &args[4];
-            if let Err(err) = entry.set_password(secret) {
+            let secret = if args.len() == 5 && args[4] != "--from-env" {
+                args[4].clone()
+            } else {
+                match env::var("VAS_KEYRING_SECRET") {
+                    Ok(v) => v,
+                    Err(_) => {
+                        eprintln!("keyring_set_failed:missing_secret");
+                        std::process::exit(2);
+                    }
+                }
+            };
+            if secret.is_empty() {
+                eprintln!("keyring_set_failed:empty_secret");
+                std::process::exit(2);
+            }
+            if let Err(err) = entry.set_password(&secret) {
                 eprintln!("keyring_set_failed:{err}");
                 std::process::exit(1);
             }

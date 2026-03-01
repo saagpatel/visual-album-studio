@@ -103,10 +103,12 @@ func _call(command: String, payload: Dictionary) -> Dictionary:
 		return _err("E_YT_ADAPTER_SCRIPT_MISSING", 0, false, {"script_path": resolved_script})
 
 	var full_payload = payload.duplicate(true)
-	full_payload["access_token"] = token
 	var stdout_lines: Array = []
 	var cmd = PackedStringArray([resolved_script, command, JSON.stringify(full_payload)])
+	var token_env_key = "VAS_YT_ACCESS_TOKEN"
+	OS.set_environment(token_env_key, token)
 	var code = OS.execute(python_bin, cmd, stdout_lines, true)
+	OS.set_environment(token_env_key, "")
 	if code != 0:
 		return _err("E_YT_ADAPTER_EXEC_FAILED", 0, true, {"exit_code": code, "output": stdout_lines})
 

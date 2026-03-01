@@ -7,7 +7,11 @@ func _init(p_helper_path: String = "native/vas_keyring/target/debug/vas_keyring"
 	helper_path = p_helper_path
 
 func set_secret(service: String, account: String, secret: String) -> Dictionary:
-	return _run(PackedStringArray(["set", service, account, secret]))
+	var env_key = "VAS_KEYRING_SECRET"
+	OS.set_environment(env_key, secret)
+	var result = _run(PackedStringArray(["set", service, account, "--from-env"]))
+	OS.set_environment(env_key, "")
+	return result
 
 func get_secret(service: String, account: String) -> Dictionary:
 	return _run(PackedStringArray(["get", service, account]))

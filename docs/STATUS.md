@@ -42,6 +42,19 @@
   - `result[live_closeout]=pass`; `capstone_finished=2026-03-01T11:55:57Z`.
 - Current pushed mainline SHA after RCA fix: `fd040cd3f212e96c05fa0d97ec4febf4942e1f92`.
 
+## Security Hardening Snapshot (2026-03-01)
+- OAuth/access-token subprocess handoff hardened:
+  - `app/src/adapters/youtube_api_adapter.gd` now passes access token via process environment (`VAS_YT_ACCESS_TOKEN`) instead of command-line payload.
+  - `scripts/youtube_adapter.py` prefers environment token handoff and only falls back to payload for compatibility.
+- Keyring secret handoff hardened:
+  - `app/src/adapters/keyring_adapter.gd` now uses `VAS_KEYRING_SECRET` + `--from-env`.
+  - `native/vas_keyring/src/main.rs` supports env-backed secret input for `set`.
+- OAuth token helper output hardened:
+  - `scripts/test/get_refresh_token.py` now writes secrets to `--out-file` (default `scripts/test/live.env.generated`) with file mode `0600`.
+  - stdout now prints masked values only (no raw client secret or refresh token).
+- Validation:
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass.
+
 ## V2 Program Activation Snapshot (2026-03-01)
 - V2 Train 0 foundation artifacts added:
   - `docs/20-phase-blueprint-v2.md`

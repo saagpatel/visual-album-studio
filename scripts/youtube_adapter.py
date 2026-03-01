@@ -114,6 +114,14 @@ def auth_headers(access_token: str) -> Dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def token_from_payload(payload: Dict[str, Any]) -> str:
+    # Prefer environment handoff to avoid token exposure in process args.
+    env_token = os.environ.get("VAS_YT_ACCESS_TOKEN", "").strip()
+    if env_token:
+        return env_token
+    return str(payload.get("access_token", "")).strip()
+
+
 def build_video_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
     if "snippet" in metadata or "status" in metadata:
         return {
@@ -137,7 +145,7 @@ def build_video_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_list_channels(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     if not access_token:
         return envelope(False, error_code="E_YT_AUTH_REQUIRED", http_status=401, data={"message": "access_token is required"})
 
@@ -148,7 +156,7 @@ def cmd_list_channels(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_start_resumable_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     file_path = Path(str(payload.get("file_path", "")))
     metadata = payload.get("metadata", {}) if isinstance(payload.get("metadata", {}), dict) else {}
     if not access_token:
@@ -194,7 +202,7 @@ def _range_uploaded_bytes(range_header: str, fallback: int) -> int:
 
 
 def cmd_resume_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     session_url = str(payload.get("session_url", "")).strip()
     file_path = Path(str(payload.get("file_path", "")))
     bytes_uploaded = int(payload.get("bytes_uploaded", 0) or 0)
@@ -276,7 +284,7 @@ def cmd_resume_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_apply_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     video_id = str(payload.get("video_id", "")).strip()
     metadata = payload.get("metadata", {}) if isinstance(payload.get("metadata", {}), dict) else {}
     if not access_token:
@@ -299,7 +307,7 @@ def cmd_apply_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_upload_thumbnail(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     video_id = str(payload.get("video_id", "")).strip()
     thumbnail_path = Path(str(payload.get("thumbnail_path", "")))
     if not access_token:
@@ -326,7 +334,7 @@ def cmd_upload_thumbnail(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_attach_playlists(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     video_id = str(payload.get("video_id", "")).strip()
     playlist_ids = payload.get("playlist_ids", [])
     if not access_token:
@@ -361,7 +369,7 @@ def cmd_attach_playlists(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cmd_readback_video(payload: Dict[str, Any]) -> Dict[str, Any]:
-    access_token = str(payload.get("access_token", "")).strip()
+    access_token = token_from_payload(payload)
     video_id = str(payload.get("video_id", "")).strip()
     if not access_token:
         return envelope(False, error_code="E_YT_AUTH_REQUIRED", http_status=401, data={"message": "access_token is required"})
