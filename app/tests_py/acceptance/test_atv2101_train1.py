@@ -47,12 +47,12 @@ def test_atv2101_train1_4k_and_signing(runtime, test_root):
     # Packaging/signing verification lane
     os.environ["VAS_RELEASE_SIGNING_KEY"] = "train1-test-signing-key"
     productization = ProductizationService(runtime.db, out_dir=test_root / "out")
-    package = productization.run_packaging_dry_run("atv2101_profile", channel="beta")
+    package = productization.run_packaging_dry_run("atv2101_profile", channel="canary")
     assert package["ok"]
 
-    signed = productization.sign_release_manifest("atv2101_profile", channel="beta", signer_id="atv2101-ci")
+    signed = productization.sign_release_manifest("atv2101_profile", channel="canary", signer_id="atv2101-ci")
     assert signed["ok"]
-    verify = productization.verify_release_manifest_signature("atv2101_profile")
+    verify = productization.verify_release_manifest_signature("atv2101_profile", channel="canary")
     assert verify["ok"]
     assert verify["valid"] is True
 
@@ -65,12 +65,32 @@ def test_atv2101_train1_4k_and_signing(runtime, test_root):
     signature_path = manifest_path.with_name("manifest.sig.json")
     sig_payload = json.loads(signature_path.read_text(encoding="utf-8"))
     assert sig_payload["signature"]["value"] == expected
+    assert package["manifest"]["schema_version"] == 2
+    assert package["manifest"]["channel"] == "canary"
+    assert package["manifest"]["provenance"]["verification_required"] is True
 
     # Signed payload should be deterministic for unchanged manifest content
-    signed_again = productization.sign_release_manifest("atv2101_profile", channel="beta", signer_id="atv2101-ci")
+    signed_again = productization.sign_release_manifest("atv2101_profile", channel="canary", signer_id="atv2101-ci")
     assert signed_again["ok"]
     sig_payload_again = json.loads(signature_path.read_text(encoding="utf-8"))
     assert sig_payload_again["signature"]["value"] == sig_payload["signature"]["value"]
 
     # Guardrail: artifact hash in signature payload matches manifest file
     assert sig_payload["manifest_sha256"] == _sha256(manifest_path)
+
+    # Channel promotion path guardrail and rollback
+    promote_beta = productization.promote_release_channel(
+        "atv2101_profile", "beta", gate_report={"status": "pass", "gate_id": "AT-V2-101", "source_channel": "canary"}
+    )
+    assert promote_beta["ok"]
+    assert promote_beta["state"]["current_channel"] == "beta"
+
+    promote_stable = productization.promote_release_channel(
+        "atv2101_profile", "stable", gate_report={"status": "pass", "gate_id": "AT-V2-101"}
+    )
+    assert promote_stable["ok"]
+    assert promote_stable["state"]["current_channel"] == "stable"
+
+    rollback_beta = productization.rollback_release_channel("atv2101_profile", "beta")
+    assert rollback_beta["ok"]
+    assert rollback_beta["state"]["current_channel"] == "beta"

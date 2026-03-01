@@ -153,21 +153,23 @@ func get_release_channels() -> Array:
 		var rows = db.query("SELECT value_json FROM app_kv WHERE key = 'release_channel' LIMIT 1;")
 		if not rows.is_empty():
 			var raw = String(rows[0].get("value_json", ""))
-			if ["stable", "beta", "dev"].has(raw):
-				selected = raw
+			if ["stable", "beta", "canary", "dev"].has(raw):
+				selected = "canary" if raw == "dev" else raw
 			elif raw.begins_with("{\""):
 				var parsed: Variant = JSON.parse_string(raw)
 				if typeof(parsed) == TYPE_DICTIONARY:
 					selected = String(parsed.get("channel", "stable"))
+					if selected == "dev":
+						selected = "canary"
 			elif raw.find("channel:") != -1:
 				if raw.find("beta") != -1:
 					selected = "beta"
-				elif raw.find("dev") != -1:
-					selected = "dev"
+				elif raw.find("canary") != -1 or raw.find("dev") != -1:
+					selected = "canary"
 				else:
 					selected = "stable"
 
-	var channels = ["stable", "beta", "dev"]
+	var channels = ["stable", "beta", "canary"]
 	var out: Array = []
 	for channel in channels:
 		out.append({
@@ -177,7 +179,9 @@ func get_release_channels() -> Array:
 	return out
 
 func set_release_channel(channel_id: String) -> Dictionary:
-	if not ["stable", "beta", "dev"].has(channel_id):
+	if channel_id == "dev":
+		channel_id = "canary"
+	if not ["stable", "beta", "canary"].has(channel_id):
 		return {
 			"ok": false,
 			"error": "E_CHANNEL_INVALID",
@@ -232,7 +236,10 @@ func _release_channel_for_profile(profile_id: String) -> String:
 	var rows = db.query("SELECT channel FROM release_profiles WHERE id = %s LIMIT 1;" % db.quote(profile_id))
 	if rows.is_empty():
 		return "stable"
-	return String(rows[0].get("channel", "stable"))
+	var channel = String(rows[0].get("channel", "stable"))
+	if channel == "dev":
+		return "canary"
+	return channel
 
 func _runbook_for_error(code: String) -> String:
 	if code.begins_with("E_FFMPEG") or code == "E_DISK_FULL":

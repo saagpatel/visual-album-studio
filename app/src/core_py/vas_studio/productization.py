@@ -9,6 +9,10 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+RELEASE_CHANNELS = ("canary", "beta", "stable")
+LEGACY_RELEASE_CHANNEL_ALIASES = {"dev": "canary"}
+RELEASE_PROMOTION_ORDER = {channel: i for i, channel in enumerate(RELEASE_CHANNELS)}
+
 
 @dataclass
 class DiagnosticsBundleInfo:
@@ -73,7 +77,8 @@ class ProductizationService:
         ]
 
     def run_packaging_dry_run(self, profile_id: str, channel: str = "stable") -> dict:
-        if channel not in {"stable", "beta", "dev"}:
+        channel = self._normalize_release_channel(channel)
+        if channel not in RELEASE_CHANNELS:
             return {"ok": False, "error": "E_CHANNEL_INVALID", "channel": channel}
 
         now = int(time.time())
@@ -86,10 +91,16 @@ class ProductizationService:
             {"name": "worker_package_stub", "path": "worker/"},
         ]
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
+            "manifest_type": "release_manifest_v2",
             "profile_id": profile_id,
             "channel": channel,
-            "version": "phase7-dry-run",
+            "version": "v2-train1-dry-run",
+            "build_context": {
+                "source_ref": os.environ.get("VAS_BUILD_SOURCE_REF", "local"),
+                "source_sha": os.environ.get("VAS_BUILD_SOURCE_SHA", "unknown"),
+                "runner": os.environ.get("VAS_BUILD_RUNNER", "local"),
+            },
             "toolchain": {
                 "ffmpeg": "managed",
                 "godot": "4.4.x",
@@ -97,6 +108,11 @@ class ProductizationService:
                 "rust": "stable",
             },
             "artifacts": sorted(artifacts, key=lambda item: (item["name"], item["path"])),
+            "provenance": {
+                "verification_required": True,
+                "signature_algorithm": "HMAC-SHA256",
+                "channel_progression": list(RELEASE_CHANNELS),
+            },
         }
         content = json.dumps(payload, sort_keys=True, indent=2)
         manifest_path.write_text(content, encoding="utf-8")
@@ -119,6 +135,7 @@ class ProductizationService:
         }
 
     def sign_release_manifest(self, profile_id: str, channel: str = "stable", signer_id: str = "vas-local") -> dict:
+        channel = self._normalize_release_channel(channel)
         package_result = self.run_packaging_dry_run(profile_id, channel=channel)
         if not package_result.get("ok"):
             return {"ok": False, "error": "E_PACKAGING_FAILED", "details": package_result}
@@ -134,7 +151,7 @@ class ProductizationService:
         now = int(time.time())
 
         signature_payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "profile_id": profile_id,
             "channel": channel,
             "manifest_path": str(manifest_path),
@@ -143,6 +160,10 @@ class ProductizationService:
                 "algorithm": "HMAC-SHA256",
                 "signer_id": signer_id,
                 "value": signature,
+            },
+            "gate_requirements": {
+                "must_verify_signature": True,
+                "required_gate": "AT-V2-101",
             },
             "created_at": now,
         }
@@ -157,6 +178,7 @@ class ProductizationService:
         }
 
     def verify_release_manifest_signature(self, profile_id: str, channel: str = "stable") -> dict:
+        channel = self._normalize_release_channel(channel)
         key = self._signing_key()
         if not key:
             return {"ok": False, "error": "E_SIGNING_KEY_MISSING"}
@@ -180,10 +202,110 @@ class ProductizationService:
         return {
             "ok": True,
             "valid": expected == actual,
+            "channel": channel,
             "expected": expected,
             "actual": actual,
             "signature_path": str(signature_path),
         }
+
+    def promote_release_channel(self, profile_id: str, target_channel: str, gate_report: dict | None = None) -> dict:
+        target_channel = self._normalize_release_channel(target_channel)
+        if target_channel not in RELEASE_CHANNELS:
+            return {"ok": False, "error": "E_CHANNEL_INVALID", "channel": target_channel}
+
+        signature_check = self.verify_release_manifest_signature(profile_id, channel=target_channel)
+        if not signature_check.get("ok"):
+            return {"ok": False, "error": "E_SIGNATURE_CHECK_FAILED", "details": signature_check}
+        if not signature_check.get("valid"):
+            return {"ok": False, "error": "E_SIGNATURE_INVALID", "details": signature_check}
+
+        gate_report = gate_report or {}
+        if str(gate_report.get("status", "")).lower() != "pass":
+            return {"ok": False, "error": "E_GATE_REQUIRED", "gate_report": gate_report}
+
+        state = self._read_promotion_state(profile_id)
+        current_channel = self._normalize_release_channel(str(state.get("current_channel", "")))
+        if current_channel not in RELEASE_CHANNELS:
+            current_channel = self._normalize_release_channel(gate_report.get("source_channel", "canary"))
+            if current_channel not in RELEASE_CHANNELS:
+                current_channel = "canary"
+
+        if RELEASE_PROMOTION_ORDER[target_channel] - RELEASE_PROMOTION_ORDER[current_channel] != 1:
+            return {
+                "ok": False,
+                "error": "E_CHANNEL_PROMOTION_PATH",
+                "current_channel": current_channel,
+                "target_channel": target_channel,
+            }
+
+        now = int(time.time())
+        event = {
+            "event": "promote",
+            "from_channel": current_channel,
+            "to_channel": target_channel,
+            "required_gate": str(gate_report.get("gate_id", "AT-V2-101")),
+            "status": "pass",
+            "created_at": now,
+        }
+        history = list(state.get("history", []))
+        history.append(event)
+        next_state = {
+            "schema_version": 1,
+            "profile_id": profile_id,
+            "current_channel": target_channel,
+            "history": history,
+            "updated_at": now,
+        }
+        self._write_promotion_state(profile_id, next_state)
+        self._persist_release_channel(profile_id, target_channel, now)
+        return {"ok": True, "state": next_state, "event": event}
+
+    def rollback_release_channel(self, profile_id: str, target_channel: str, reason: str = "manual_rollback") -> dict:
+        target_channel = self._normalize_release_channel(target_channel)
+        if target_channel not in RELEASE_CHANNELS:
+            return {"ok": False, "error": "E_CHANNEL_INVALID", "channel": target_channel}
+
+        state = self._read_promotion_state(profile_id)
+        history = list(state.get("history", []))
+        current_channel = self._normalize_release_channel(str(state.get("current_channel", "")))
+        if current_channel not in RELEASE_CHANNELS:
+            return {"ok": False, "error": "E_PROMOTION_STATE_MISSING"}
+
+        if target_channel == current_channel:
+            return {"ok": True, "state": state, "event": None}
+
+        seen_channels = {self._normalize_release_channel(str(event.get("from_channel", ""))) for event in history}
+        seen_channels.add(current_channel)
+        if target_channel not in seen_channels:
+            return {"ok": False, "error": "E_ROLLBACK_TARGET_UNKNOWN", "target_channel": target_channel}
+
+        if RELEASE_PROMOTION_ORDER[target_channel] >= RELEASE_PROMOTION_ORDER[current_channel]:
+            return {
+                "ok": False,
+                "error": "E_ROLLBACK_DIRECTION_INVALID",
+                "current_channel": current_channel,
+                "target_channel": target_channel,
+            }
+
+        now = int(time.time())
+        event = {
+            "event": "rollback",
+            "from_channel": current_channel,
+            "to_channel": target_channel,
+            "reason": reason,
+            "created_at": now,
+        }
+        history.append(event)
+        next_state = {
+            "schema_version": 1,
+            "profile_id": profile_id,
+            "current_channel": target_channel,
+            "history": history,
+            "updated_at": now,
+        }
+        self._write_promotion_state(profile_id, next_state)
+        self._persist_release_channel(profile_id, target_channel, now)
+        return {"ok": True, "state": next_state, "event": event}
 
     def export_diagnostics(self, scope: dict) -> dict:
         now = int(time.time())
@@ -251,21 +373,18 @@ class ProductizationService:
             row = self.db.execute("SELECT value_json FROM app_kv WHERE key = 'release_channel'").fetchone()
             if row and row["value_json"]:
                 try:
-                    selected = json.loads(row["value_json"]).get("channel", "stable")
+                    selected = self._normalize_release_channel(json.loads(row["value_json"]).get("channel", "stable"))
                 except json.JSONDecodeError:
                     selected = "stable"
-        return [{"id": c, "selected": c == selected} for c in ["stable", "beta", "dev"]]
+        return [{"id": c, "selected": c == selected} for c in RELEASE_CHANNELS]
 
     def set_release_channel(self, channel_id: str) -> dict:
-        if channel_id not in {"stable", "beta", "dev"}:
+        normalized = self._normalize_release_channel(channel_id)
+        if normalized not in RELEASE_CHANNELS:
             return {"ok": False, "error": "E_CHANNEL_INVALID", "channel": channel_id}
-        if self.db:
-            self.db.execute(
-                "INSERT OR REPLACE INTO app_kv(key, value_json, updated_at) VALUES ('release_channel', ?, ?)",
-                (json.dumps({"channel": channel_id}), int(time.time())),
-            )
-            self.db.commit()
-        return {"ok": True, "channel": channel_id}
+        now = int(time.time())
+        self._persist_release_channel(profile_id="", channel=normalized, now=now)
+        return {"ok": True, "channel": normalized}
 
     def generate_support_report(self, context: dict) -> dict:
         safe_context = self._redact_value(dict(context))
@@ -348,3 +467,50 @@ class ProductizationService:
     @staticmethod
     def _signing_key() -> str:
         return os.environ.get("VAS_RELEASE_SIGNING_KEY", "").strip()
+
+    @staticmethod
+    def _normalize_release_channel(channel: str) -> str:
+        normalized = str(channel or "").strip().lower()
+        return LEGACY_RELEASE_CHANNEL_ALIASES.get(normalized, normalized)
+
+    def _promotion_state_path(self, profile_id: str) -> Path:
+        return self.out_dir / "productization" / "packaging" / profile_id / "promotion_state.json"
+
+    def _read_promotion_state(self, profile_id: str) -> dict:
+        path = self._promotion_state_path(profile_id)
+        if not path.exists():
+            return {"schema_version": 1, "profile_id": profile_id, "current_channel": "canary", "history": []}
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                return payload
+        except json.JSONDecodeError:
+            pass
+        return {"schema_version": 1, "profile_id": profile_id, "current_channel": "canary", "history": []}
+
+    def _write_promotion_state(self, profile_id: str, state: dict) -> None:
+        path = self._promotion_state_path(profile_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(state, sort_keys=True, indent=2), encoding="utf-8")
+
+    def _persist_release_channel(self, profile_id: str, channel: str, now: int) -> None:
+        if not self.db:
+            return
+
+        self.db.execute(
+            "INSERT OR REPLACE INTO app_kv(key, value_json, updated_at) VALUES ('release_channel', ?, ?)",
+            (json.dumps({"channel": channel}), now),
+        )
+        if profile_id:
+            row = self.db.execute("SELECT manifest_json FROM release_profiles WHERE id = ?", (profile_id,)).fetchone()
+            manifest_json = "{}"
+            if row and row["manifest_json"]:
+                manifest_json = row["manifest_json"]
+            self.db.execute(
+                """
+                INSERT OR REPLACE INTO release_profiles(id, channel, manifest_json, created_at, updated_at)
+                VALUES (?, ?, ?, COALESCE((SELECT created_at FROM release_profiles WHERE id = ?), ?), ?)
+                """,
+                (profile_id, channel, manifest_json, profile_id, now, now),
+            )
+        self.db.commit()

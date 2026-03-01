@@ -22,6 +22,8 @@ def test_tsv2_101_packaging_signature_sign_and_verify(runtime, test_root: Path):
     payload = json.loads(signature_path.read_text(encoding="utf-8"))
     assert payload["signature"]["algorithm"] == "HMAC-SHA256"
     assert payload["channel"] == "beta"
+    assert payload["schema_version"] == 2
+    assert payload["gate_requirements"]["required_gate"] == "AT-V2-101"
 
 
 def test_tsv2_101_packaging_signature_missing_key(runtime, test_root: Path):

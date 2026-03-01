@@ -22,8 +22,10 @@ def test_ts016_packaging_manifest_determinism(runtime, test_root: Path):
     path = Path(a["package"]["manifest_path"])
     assert path.exists()
     payload = json.loads(path.read_text(encoding="utf-8"))
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["channel"] == "beta"
+    assert payload["manifest_type"] == "release_manifest_v2"
+    assert payload["provenance"]["signature_algorithm"] == "HMAC-SHA256"
     assert payload["artifacts"] == sorted(payload["artifacts"], key=lambda item: (item["name"], item["path"]))
     assert "created_at" not in payload
 

@@ -4,6 +4,34 @@
 **Current state:** Project scope complete on `main`; release checkpoint tag published as `closeout-2026-03-01`
 **Last updated:** 2026-03-01
 
+## V2 Baseline Checkpoint (2026-03-01)
+- Canonical V2 execution baseline SHA: `502e2be460dd395da9f6b5ba80b892d31a3a45cf` (`main` == `origin/main` at checkpoint time).
+- Strict capstone baseline pass:
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh`
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T07:21:45Z`
+- Strict verify baseline pass:
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
+  - completed successfully at `2026-03-01T07:22:50Z` window.
+- Evidence pointers:
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
+
+## V2 Train 1 Delivery Kickoff (2026-03-01)
+- Train 1 implementation started beyond acceptance scaffolding:
+  - release manifest upgraded to v2 payload with provenance/signature policy fields.
+  - release-channel progression implemented as `canary -> beta -> stable` with rollback flow.
+  - migration added to normalize legacy `dev` channel state into `canary`.
+- Verification evidence on kickoff diff:
+  - `bash scripts/test/acceptance_v2_train1.sh` => pass.
+  - `./scripts/test/unit.sh` => pass.
+  - `./scripts/test/integration.sh` => pass.
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass.
+- GitHub branch protection/ruleset configuration re-attempted:
+  - `./scripts/ops/configure_github_branch_protection.sh`
+  - result remains blocked by repo tier (`HTTP 403`), fallback local/CI guardrails remain active.
+
 ## V2 Program Activation Snapshot (2026-03-01)
 - V2 Train 0 foundation artifacts added:
   - `docs/20-phase-blueprint-v2.md`
