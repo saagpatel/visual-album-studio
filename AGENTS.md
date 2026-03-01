@@ -1,5 +1,12 @@
 # Visual Album Studio — Agent Instructions
 
+<!-- comm-contract:start -->
+## Communication Contract (Global)
+- Follow `/Users/d/.codex/policies/communication/BigPictureReportingV1.md` for all user-facing updates.
+- Keep default updates beginner-friendly, big-picture, and low-noise.
+- Keep technical details in internal artifacts unless explicitly requested by the user.
+- Honor toggles literally: `simple mode`, `show receipts`, `tech mode`, `debug mode`.
+<!-- comm-contract:end -->
 This repository is designed to be implemented end-to-end by a code-generation agent (GPT-5.3-Codex) using the documentation in `docs/**` as the specification.
 
 ## Codex Agent Rules Block (MANDATORY)
@@ -116,8 +123,6 @@ STOP CONDITIONS
   - options
   - selected resolution and rationale
 - Do not proceed until the conflict is resolved and reflected in docs.
-
-
 
 ```
 
