@@ -18,3 +18,8 @@
 ## Operational Notes
 - Secrets and signing keys must not be stored in repo; use managed secret stores.
 - Region and residency assumptions must be revalidated before Train 4 GA closeout.
+
+## Train 4 Revalidation (2026-03-01)
+- Revalidated baseline region remains `us-west-1` with US residency constraints.
+- Threat review confirms local-first fallback remains mandatory during cloud outage states.
+- No ADR override required for residency at Train 4 closure.

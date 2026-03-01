@@ -36,6 +36,16 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
+- V2 M3 closure update:
+  - Distribution/provider expansion controls delivered and verified (`AT-V2-301` pass).
+  - Quota/policy and privacy-redaction checks now covered by `IT-V2-301..305` and unit contracts `TS-V2-301/302`.
+- V2 M4 closure update:
+  - Cloud/collaboration controls delivered and verified (`AT-V2-401` pass).
+  - Threat model signoff published: `docs/35-v2-train4-threat-model.md`.
+  - Residency baseline revalidated for Train 4 closeout in `docs/28-v2-cloud-region-and-residency.md`.
+- V2 M5 closeout-prep update:
+  - Final closeout suites added (`AT-V2-501`, `IT-V2-510`, `IT-V2-511`, `TS-V2-510`).
+  - Full acceptance stack (`train1`..`train5`) + strict verify + strict capstone rerun passed with `result[live_closeout]=pass` and `capstone_finished=2026-03-01T15:54:52Z`.
 - Closeout context constants:
   - `CLOSEOUT_DATE_UTC=2026-03-01`
   - `CLOSEOUT_EVIDENCE_SHA=f608c203520d00b8b0a33946a502ba8cfdfe8991`

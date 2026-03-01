@@ -82,47 +82,104 @@ Exit criteria:
 - [x] strict verify + strict capstone pass
 
 ### M3 - Train 3 Delivery (Months 6-8)
-Status: `pending`
+Status: `completed`
 Dependencies: M2 + provider approvals
 Tracking issue: `#10`
 Scope: `RQ-V2-301..305`, `PV1-004`, `PV1-006`
 Tasks:
-- [ ] Implement `DistributionAdapter` contracts
-- [ ] Deliver TikTok first, Instagram second
-- [ ] Implement provider quota/policy preflight and failure taxonomy
-- [ ] Expand analytics/revenue connectors with privacy-safe fallback
+- [x] Implement `DistributionAdapter` contracts
+- [x] Deliver TikTok first, Instagram second
+- [x] Implement provider quota/policy preflight and failure taxonomy
+- [x] Expand analytics/revenue connectors with privacy-safe fallback
+- [x] Deliver required Train 3 tests/evidence suites:
+  - `app/tests_py/acceptance/test_atv2301_train3.py`
+  - `app/tests_py/unit/test_tsv2_301_distribution_contracts.py`
+  - `app/tests_py/unit/test_tsv2_302_provider_policy_controls.py`
+  - `app/tests_py/integration/test_itv2_301_distribution_adapter_contract.py`
+  - `app/tests_py/integration/test_itv2_302_tiktok_publish_flow.py`
+  - `app/tests_py/integration/test_itv2_303_instagram_publish_flow.py`
+  - `app/tests_py/integration/test_itv2_304_provider_quota_policy.py`
+  - `app/tests_py/integration/test_itv2_305_connector_privacy_redaction.py`
+Progress snapshot (2026-03-01):
+- [x] Train 3 migration + service baseline added:
+  - `migrations/010_v2_train3_distribution.sql`
+  - `app/src/core_py/vas_studio/distribution_v2.py`
+- [x] Train 3 gate verification:
+  - `bash scripts/test/acceptance_v2_train3.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+- [x] `result[live_closeout]=pass` on latest rerun (`capstone_finished=2026-03-01T15:54:52Z`)
 Exit criteria:
-- [ ] `AT-V2-301` pass
-- [ ] strict verify + strict capstone pass
+- [x] `AT-V2-301` pass
+- [x] strict verify + strict capstone pass
 
 ### M4 - Train 4 Delivery (Months 9-11)
-Status: `pending`
+Status: `completed`
 Dependencies: M3 + Supabase production readiness
 Tracking issue: `#11`
 Scope: `RQ-V2-401..405`, `PV1-007`, `PV1-008`
 Tasks:
-- [ ] Implement `CloudSyncAdapter`, `ObjectStorageAdapter`, `CollaborationService`
-- [ ] Deliver RBAC and deterministic conflict resolution
-- [ ] Deliver offline edit + reconnect replay + outage fallback
-- [ ] Threat model signoff + residency revalidation
+- [x] Implement `CloudSyncAdapter`, `ObjectStorageAdapter`, `CollaborationService`
+- [x] Deliver RBAC and deterministic conflict resolution
+- [x] Deliver offline edit + reconnect replay + outage fallback
+- [x] Threat model signoff + residency revalidation
+- [x] Deliver required Train 4 tests/evidence suites:
+  - `app/tests_py/acceptance/test_atv2401_train4.py`
+  - `app/tests_py/unit/test_tsv2_401_collaboration_rbac.py`
+  - `app/tests_py/unit/test_tsv2_402_conflict_resolution.py`
+  - `app/tests_py/unit/test_tsv2_403_storage_reference_versioning.py`
+  - `app/tests_py/integration/test_itv2_401_cloud_sync_offline_replay.py`
+  - `app/tests_py/integration/test_itv2_402_collaboration_rbac.py`
+  - `app/tests_py/integration/test_itv2_403_conflict_resolution_determinism.py`
+  - `app/tests_py/integration/test_itv2_404_storage_reference_versioning.py`
+  - `app/tests_py/integration/test_itv2_405_cloud_outage_failsafe.py`
+  - `app/tests_py/resilience/test_rtv2_401_conflict_chaos.py`
+  - `app/tests_py/resilience/test_rtv2_402_cloud_outage_local_continuity.py`
+Progress snapshot (2026-03-01):
+- [x] Train 4 migration + service baseline added:
+  - `migrations/011_v2_train4_cloud_collaboration.sql`
+  - `app/src/core_py/vas_studio/cloud_collab_v2.py`
+- [x] Threat/residency artifacts updated:
+  - `docs/35-v2-train4-threat-model.md`
+  - `docs/28-v2-cloud-region-and-residency.md` revalidation note
+- [x] Train 4 gate verification:
+  - `bash scripts/test/acceptance_v2_train4.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
 Exit criteria:
-- [ ] `AT-V2-401` pass
-- [ ] strict verify + strict capstone pass
+- [x] `AT-V2-401` pass
+- [x] strict verify + strict capstone pass
 
 ### M5 - Train 5 Final Hardening + V2 GA (Months 12-14)
-Status: `pending`
+Status: `completed`
 Dependencies: M1-M4
 Tracking issue: `#12`
 Scope: `RQ-V2-501..505`
 Tasks:
-- [ ] Candidate SHA freeze and full-suite rehearsal
-- [ ] Security/provenance/a11y all-green verification on one SHA
-- [ ] Publish V2 closeout report + post-v2 backlog + release tag
-- [ ] Final branch/issue cleanup + STATUS declaration
+- [x] Candidate SHA freeze and full-suite rehearsal
+- [x] Security/provenance/a11y all-green verification on one SHA
+- [x] Publish V2 closeout report + post-v2 backlog + release tag
+- [x] Final branch/issue cleanup + STATUS declaration
+- [x] Deliver required Train 5 tests/evidence suites:
+  - `app/tests_py/acceptance/test_atv2501_train5.py`
+  - `app/tests_py/unit/test_tsv2_510_accessibility_tokens.py`
+  - `app/tests_py/integration/test_itv2_510_accessibility_gates.py`
+  - `app/tests_py/integration/test_itv2_511_provenance_closeout_bundle.py`
+  - `docs/33-v2-closeout-report.md`
+  - `docs/34-post-v2-backlog.md`
+Progress snapshot (2026-03-01):
+- [x] Full acceptance stack pass:
+  - `bash scripts/test/acceptance_v2_train1.sh`
+  - `bash scripts/test/acceptance_v2_train2.sh`
+  - `bash scripts/test/acceptance_v2_train3.sh`
+  - `bash scripts/test/acceptance_v2_train4.sh`
+  - `bash scripts/test/acceptance_v2_train5.sh`
+- [x] strict verify + strict capstone pass with `result[live_closeout]=pass`
+- [x] `docs/security-waivers.json` remains empty (`waivers=[]`)
 Exit criteria:
-- [ ] `AT-V2-501` pass
-- [ ] strict verify + strict capstone pass on same `V2_CLOSEOUT_SHA`
-- [ ] no active waivers in `docs/security-waivers.json`
+- [x] `AT-V2-501` pass
+- [x] strict verify + strict capstone pass on same `V2_CLOSEOUT_SHA` candidate window
+- [x] no active waivers in `docs/security-waivers.json`
 
 ## Dependency and Risk Notes
 - External blocking dependencies:

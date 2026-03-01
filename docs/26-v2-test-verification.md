@@ -65,8 +65,13 @@ Train 1 acceptance contract:
   - command: `bash scripts/test/acceptance_v2_train3.sh`
   - implementation evidence files (required):
     - `app/tests_py/acceptance/test_atv2301_train3.py`
+    - `app/tests_py/unit/test_tsv2_301_distribution_contracts.py`
+    - `app/tests_py/unit/test_tsv2_302_provider_policy_controls.py`
     - `app/tests_py/integration/test_itv2_301_distribution_adapter_contract.py`
+    - `app/tests_py/integration/test_itv2_302_tiktok_publish_flow.py`
+    - `app/tests_py/integration/test_itv2_303_instagram_publish_flow.py`
     - `app/tests_py/integration/test_itv2_304_provider_quota_policy.py`
+    - `app/tests_py/integration/test_itv2_305_connector_privacy_redaction.py`
 
 ### Train 4
 - `AT-V2-401`: collaboration and cloud GA
@@ -78,8 +83,16 @@ Train 1 acceptance contract:
   - command: `bash scripts/test/acceptance_v2_train4.sh`
   - implementation evidence files (required):
     - `app/tests_py/acceptance/test_atv2401_train4.py`
+    - `app/tests_py/unit/test_tsv2_401_collaboration_rbac.py`
+    - `app/tests_py/unit/test_tsv2_402_conflict_resolution.py`
+    - `app/tests_py/unit/test_tsv2_403_storage_reference_versioning.py`
     - `app/tests_py/integration/test_itv2_401_cloud_sync_offline_replay.py`
+    - `app/tests_py/integration/test_itv2_402_collaboration_rbac.py`
     - `app/tests_py/integration/test_itv2_403_conflict_resolution_determinism.py`
+    - `app/tests_py/integration/test_itv2_404_storage_reference_versioning.py`
+    - `app/tests_py/integration/test_itv2_405_cloud_outage_failsafe.py`
+    - `app/tests_py/resilience/test_rtv2_401_conflict_chaos.py`
+    - `app/tests_py/resilience/test_rtv2_402_cloud_outage_local_continuity.py`
 
 ### Train 5
 - `AT-V2-501`: final candidate closeout
@@ -90,8 +103,11 @@ Train 1 acceptance contract:
   - command: `bash scripts/test/acceptance_v2_train5.sh`
   - implementation evidence files (required):
     - `app/tests_py/acceptance/test_atv2501_train5.py`
+    - `app/tests_py/unit/test_tsv2_510_accessibility_tokens.py`
     - `app/tests_py/integration/test_itv2_510_accessibility_gates.py`
     - `app/tests_py/integration/test_itv2_511_provenance_closeout_bundle.py`
+    - `docs/33-v2-closeout-report.md`
+    - `docs/34-post-v2-backlog.md`
 
 ## Scenario matrix (mandatory)
 1. 4K 2h export interruption/resume.
@@ -104,9 +120,16 @@ Train 1 acceptance contract:
 8. Keyboard-only critical workflow verification.
 
 ## Current execution note (2026-03-01)
-- `scripts/test/acceptance_v2_train2.sh` .. `scripts/test/acceptance_v2_train5.sh` are now present as command contracts.
-- Each script intentionally returns a non-zero status until its train acceptance suite file exists.
-- This prevents false green train closure while enabling deterministic command-level gating as each train is implemented.
+- Train acceptance suite files for `AT-V2-201`, `AT-V2-301`, `AT-V2-401`, and `AT-V2-501` are now implemented.
+- Required gate scripts are active and passing against the implemented suites:
+  - `scripts/test/acceptance_v2_train2.sh`
+  - `scripts/test/acceptance_v2_train3.sh`
+  - `scripts/test/acceptance_v2_train4.sh`
+  - `scripts/test/acceptance_v2_train5.sh`
+- Full closeout gate order remains:
+  - Train acceptance stack (`train1` -> `train5`)
+  - strict verify (`.codex/scripts/run_verify_commands.sh`)
+  - strict capstone (`scripts/test/capstone_audit.sh`)
 
 ## Release blockers
 - Any required gate result is `fail` or `not-run`.

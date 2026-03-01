@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Project scope complete on `main`; release checkpoint tag published as `closeout-2026-03-01`
+**Current state:** V1 closeout is complete on `main`; V2 M0-M5 implementation and closeout evidence are now prepared on closeout candidate branch pending final merge/tag stamp
 **Last updated:** 2026-03-01
 
 ## V2 Baseline Checkpoint (2026-03-01)
@@ -178,6 +178,55 @@
   - `capstone_finished=2026-03-01T15:09:45Z`
 - Milestone state:
   - `M0` complete, `M1` complete, `M2` complete, `M3` next active implementation lane.
+
+## V2 Train 3-5 Completion Snapshot (2026-03-01)
+- Candidate branch:
+  - `codex/v2-m3-distribution-20260301`
+- Train 3 implementation delivered:
+  - `migrations/010_v2_train3_distribution.sql`
+  - `app/src/core_py/vas_studio/distribution_v2.py`
+  - `app/tests_py/acceptance/test_atv2301_train3.py`
+  - `app/tests_py/integration/test_itv2_301_distribution_adapter_contract.py`
+  - `app/tests_py/integration/test_itv2_302_tiktok_publish_flow.py`
+  - `app/tests_py/integration/test_itv2_303_instagram_publish_flow.py`
+  - `app/tests_py/integration/test_itv2_304_provider_quota_policy.py`
+  - `app/tests_py/integration/test_itv2_305_connector_privacy_redaction.py`
+- Train 4 implementation delivered:
+  - `migrations/011_v2_train4_cloud_collaboration.sql`
+  - `app/src/core_py/vas_studio/cloud_collab_v2.py`
+  - `app/tests_py/acceptance/test_atv2401_train4.py`
+  - `app/tests_py/integration/test_itv2_401_cloud_sync_offline_replay.py`
+  - `app/tests_py/integration/test_itv2_402_collaboration_rbac.py`
+  - `app/tests_py/integration/test_itv2_403_conflict_resolution_determinism.py`
+  - `app/tests_py/integration/test_itv2_404_storage_reference_versioning.py`
+  - `app/tests_py/integration/test_itv2_405_cloud_outage_failsafe.py`
+  - `docs/35-v2-train4-threat-model.md`
+  - `docs/28-v2-cloud-region-and-residency.md` revalidation update
+- Train 5 closeout artifacts delivered:
+  - `app/tests_py/acceptance/test_atv2501_train5.py`
+  - `app/tests_py/unit/test_tsv2_510_accessibility_tokens.py`
+  - `app/tests_py/integration/test_itv2_510_accessibility_gates.py`
+  - `app/tests_py/integration/test_itv2_511_provenance_closeout_bundle.py`
+  - `docs/33-v2-closeout-report.md`
+  - `docs/34-post-v2-backlog.md`
+- Latest full gate snapshot on candidate:
+  - acceptance stack pass:
+    - `bash scripts/test/acceptance_v2_train1.sh`
+    - `bash scripts/test/acceptance_v2_train2.sh`
+    - `bash scripts/test/acceptance_v2_train3.sh`
+    - `bash scripts/test/acceptance_v2_train4.sh`
+    - `bash scripts/test/acceptance_v2_train5.sh`
+  - strict verify pass:
+    - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
+  - strict capstone pass:
+    - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh`
+    - `result[live_closeout]=pass`
+    - `capstone_finished=2026-03-01T15:54:52Z`
+- Completion gating status:
+  - `AT-V2-301`: pass
+  - `AT-V2-401`: pass
+  - `AT-V2-501`: pass
+  - `docs/security-waivers.json`: empty waiver list
 
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
