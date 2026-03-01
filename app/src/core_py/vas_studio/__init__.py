@@ -25,6 +25,7 @@ from .distribution_v2 import (
     XDistributionAdapter,
     make_request,
 )
+from .provider_policy_watch_v1 import ProviderPolicyDiffV1, ProviderPolicyWatcherV1
 from .distribution_scheduler_v1 import (
     DistributionSchedulingServiceV1,
     ProviderSchedulePlanV1,
@@ -124,6 +125,8 @@ __all__ = [
     "PHOTO_PRESETS",
     "PhotoAnimator",
     "ProviderPolicyPreflight",
+    "ProviderPolicyDiffV1",
+    "ProviderPolicyWatcherV1",
     "ProviderPublishRequestV1",
     "ProviderPublishStatusV1",
     "ProviderSchedulePlanV1",

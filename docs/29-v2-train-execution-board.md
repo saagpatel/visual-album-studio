@@ -26,6 +26,17 @@ Post-V2 control-plane artifacts:
 - `scripts/test/acceptance_pv2_202.sh`
 - `docs/39-postv2-ops-runbook.md`
 
+## Next-Cycle Execution Board (Kickoff 2026-03-01)
+- `#29` - `NC-001` DR rehearsal runner
+- `#30` - `NC-002` anomaly auto-triage enrichment
+- `#31` - `NC-003` provider policy diff watcher (`completed`)
+- `#32` - `NC-101` preset trust/verification UI
+- `#33` - `NC-102` scheduler simulation dashboard
+- `#34` - `NC-103` collaboration timeline visualizer
+- `#35` - `NC-201` provider expansion feature flags
+- `#36` - `NC-202` residency policy templates
+- `#37` - `NC-203` audit dashboard export bundles
+
 ## Program Constants
 - Owner: `saagar210`
 - Model: `single-owner`

@@ -1,8 +1,46 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 and V2 closeout are complete on `main`; all Post-V2 backlog waves (`PV2-001`, `PV2-101`, `PV2-102`, `PV2-002`, `PV2-201`, `PV2-202`) are complete with acceptance and strict-gate evidence.
+**Current state:** V1 and V2 closeout are complete on `main`; all Post-V2 backlog waves are complete and Next-cycle execution is active with control-plane docs published and first P1 slice (`NC-003`) delivered.
 **Last updated:** 2026-03-01
+
+## Next-Cycle Kickoff (2026-03-01)
+- Baseline at kickoff:
+  - branch: `main`
+  - baseline SHA: `ebec09341f60102175cd590a0ad63871b89921cd`
+- Next-cycle control-plane docs published:
+  - `docs/42-next-cycle-blueprint.md`
+  - `docs/43-next-cycle-requirements-traceability.md`
+  - `docs/44-next-cycle-test-verification.md`
+- Next-cycle issue board opened:
+  - `#29` (`NC-001`)
+  - `#30` (`NC-002`)
+  - `#31` (`NC-003`)
+  - `#32` (`NC-101`)
+  - `#33` (`NC-102`)
+  - `#34` (`NC-103`)
+  - `#35` (`NC-201`)
+  - `#36` (`NC-202`)
+  - `#37` (`NC-203`)
+- First P1 slice completed:
+  - `NC-003` provider policy diff watcher with changelog ingestion and recommendation output:
+    - `app/src/core_py/vas_studio/provider_policy_watch_v1.py`
+    - `migrations/015_nextcycle_provider_policy_watch.sql`
+    - `scripts/test/acceptance_nc_003.sh`
+    - `app/tests_py/unit/test_tsnc_003_provider_policy_diff.py`
+    - `app/tests_py/integration/test_itnc_003_provider_policy_changelog.py`
+    - `app/tests_py/acceptance/test_atnc_003_provider_policy_diff_watcher.py`
+- Gate evidence:
+  - `bash scripts/test/acceptance_nc_003.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T18:39:03Z`
+- Evidence pointers:
+  - `out/logs/acceptance_nc_003.log`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
 
 ## Post-V2 Wave 0 Control-Plane Kickoff (2026-03-01)
 - Baseline at kickoff:
@@ -643,3 +681,4 @@
 - ASM-204: Continuous execution proceeds phase-by-phase, with blocker-aware parallelization inside phase boundaries only.
 - ASM-205: Strict security mode in CI permits only explicit time-boxed waivers documented in `docs/security-waivers.json`.
 - ASM-206: V2 cloud baseline region/residency defaults to Supabase `us-west-1` with United States residency (`docs/28-v2-cloud-region-and-residency.md`).
+- ASM-207: Next-cycle backlog identifiers are normalized as `NC-001/002/003/101/102/103/201/202/203` to preserve deterministic planning and acceptance command mapping.
