@@ -81,3 +81,13 @@ Scales:
   - Weekly (Monday 16:00 UTC): `RSK-013`
   - Monthly (day 1, 16:00 UTC): `RSK-006`, `RSK-012`, `RSK-018`, `RSK-024`
   - Release-train manual trigger: `RSK-024`
+
+## V2 Program Risk Additions (Train 0 Baseline)
+
+| Risk ID | Description | Severity | Likelihood | Mitigation | Detection/Monitoring | Owner (Module/Phase) |
+|---|---|---|---|---|---|---|
+| RSK-V2-001 | Cloud sync/collaboration complexity degrades local-first reliability guarantees. | High | Medium | Keep local-first as default, enforce offline-safe degradation, and gate cloud features behind deterministic sync contracts. | `AT-V2-401`, outage simulation scenarios, sync replay logs. | S/T + V2 Cloud (Train 4) |
+| RSK-V2-002 | 4K default lane introduces determinism/performance regressions versus v1 baseline. | High | Medium | Add 4K determinism fixtures, long-run resume tests, and performance budget gates before default-lane promotion. | `AT-V2-101`, 4K benchmark trend reports, rerun hash drift alerts. | I/C/H (Train 1) |
+| RSK-V2-003 | Multi-provider policy/quota drift causes publish instability or compliance regressions. | High | High | Provider-specific guardrails, quota-aware schedulers, and policy-change monitoring with adapter contract tests. | `AT-V2-301`, provider error taxonomy dashboards, revalidation cadence issues. | L/M + V2 Distribution (Train 3) |
+| RSK-V2-004 | ML model provenance/licensing ambiguity introduces legal/security risk. | High | Medium | Enforce model checksum/provenance policy, license metadata requirements, and allowlist-only model registry. | `AT-V2-201`, model registry audits, security review checks. | E/J + V2 Model Registry (Train 2) |
+| RSK-V2-005 | UI complexity from collaboration + multi-provider workflows harms usability/accessibility. | Medium | Medium | Tokenized UI system, mandatory state coverage, and blocking WCAG 2.2/accessibility gates for critical paths. | UI gate reports, `AT-V2-501` accessibility assertions, usability review findings. | S (Train 0-5) |

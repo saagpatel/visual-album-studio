@@ -40,3 +40,12 @@ This backlog captures all explicitly deferred/out-of-scope items from the phase 
 ## Operational Notes
 - Deferred items are tracked as backlog candidates, not in-scope deliverables for current completion criteria.
 - Any promoted item must be re-scoped through `docs/01-pinned-decisions.md`, `docs/20-phase-blueprint.md`, and traceability updates before implementation.
+
+## V2 Activation Status (2026-03-01)
+- Program status: Active
+- Active execution baseline:
+  - `docs/20-phase-blueprint-v2.md`
+  - `docs/03-requirements-v2.md`
+  - `docs/18-traceability-matrix-v2.md`
+- Promotion decision:
+  - `PV1-001..PV1-008` are now active V2 delivery scope under Train 0 -> Train 5 execution.

@@ -111,6 +111,16 @@ The implementation must provide these scripts:
 ./scripts/test/acceptance_phase_07.sh
 ```
 
+## V2 Train 0 governance command (required for V2 activation)
+
+```bash
+bash scripts/ci/v2_train0_gate.sh
+```
+
+Reference:
+- `docs/20-phase-blueprint-v2.md`
+- `docs/26-v2-test-verification.md`
+
 ## Capstone audit automation (post-Phase-7)
 
 ```bash

@@ -4,6 +4,28 @@
 **Current state:** Project scope complete on `main`; release checkpoint tag published as `closeout-2026-03-01`
 **Last updated:** 2026-03-01
 
+## V2 Program Activation Snapshot (2026-03-01)
+- V2 Train 0 foundation artifacts added:
+  - `docs/20-phase-blueprint-v2.md`
+  - `docs/03-requirements-v2.md`
+  - `docs/18-traceability-matrix-v2.md`
+  - `docs/25-ui-ux-standards-v2.md`
+- V2 architecture ADRs added:
+  - `docs/adr/0001-v2-cloud-sync-architecture.md`
+  - `docs/adr/0002-v2-conflict-resolution-model.md`
+- Governance/security workflow scaffolding added:
+  - `.github/workflows/codeql-analysis.yml`
+  - `.github/workflows/dependency-review.yml`
+  - `.github/workflows/release-provenance.yml`
+  - `.github/dependabot.yml`
+  - `.github/CODEOWNERS`
+- V2 Train 0 governance check wired into CI:
+  - `scripts/ci/v2_train0_gate.sh`
+  - `.github/workflows/quality-gates.yml`
+- Program state:
+  - v1 closeout remains complete and immutable under tag `closeout-2026-03-01`.
+  - V2 is now active at Train 0 with governance/specification lane established.
+
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
