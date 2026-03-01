@@ -10,6 +10,11 @@ Carry-forward mandatory commands:
 Train 0 governance contract:
 - `bash scripts/ci/v2_train0_gate.sh`
 
+Train 1 acceptance contract:
+- `bash scripts/test/acceptance_v2_train1.sh`
+  - uses `VAS_RELEASE_SIGNING_KEY` when available
+  - falls back to CI-local deterministic key only for test execution
+
 ## V2 gate catalog
 
 ### Train 0
@@ -26,6 +31,7 @@ Train 0 governance contract:
   - 4K determinism fixture reruns
   - 4K long-run interruption/resume
   - signed package verification and channel promotion checks
+  - command: `bash scripts/test/acceptance_v2_train1.sh`
 
 ### Train 2
 - `AT-V2-201`: rendering/ML expansion

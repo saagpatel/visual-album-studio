@@ -121,6 +121,16 @@ Reference:
 - `docs/20-phase-blueprint-v2.md`
 - `docs/26-v2-test-verification.md`
 
+## V2 Train 1 acceptance command (required for Train 1 gate)
+
+```bash
+bash scripts/test/acceptance_v2_train1.sh
+```
+
+Reference:
+- `docs/20-phase-blueprint-v2.md`
+- `docs/26-v2-test-verification.md`
+
 ## Capstone audit automation (post-Phase-7)
 
 ```bash

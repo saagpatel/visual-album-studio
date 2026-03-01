@@ -75,3 +75,25 @@ jobs:
 
       - name: AT-007 pinned smoke
         run: PATH="$PWD/out/tools/godot44/bin:$PATH" ./scripts/test/acceptance_phase_07.sh
+
+  v2-train1-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Bootstrap toolchain
+        run: ./scripts/bootstrap.sh
+
+      - name: AT-V2-101 gate
+        env:
+          VAS_RELEASE_SIGNING_KEY: ${{ secrets.VAS_RELEASE_SIGNING_KEY }}
+        run: bash scripts/test/acceptance_v2_train1.sh

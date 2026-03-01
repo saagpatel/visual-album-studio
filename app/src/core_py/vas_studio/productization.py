@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -114,6 +116,73 @@ class ProductizationService:
             "ok": True,
             "manifest": payload,
             "package": PackageManifest(profile_id, manifest_path, sha, now).to_dict(),
+        }
+
+    def sign_release_manifest(self, profile_id: str, channel: str = "stable", signer_id: str = "vas-local") -> dict:
+        package_result = self.run_packaging_dry_run(profile_id, channel=channel)
+        if not package_result.get("ok"):
+            return {"ok": False, "error": "E_PACKAGING_FAILED", "details": package_result}
+
+        key = self._signing_key()
+        if not key:
+            return {"ok": False, "error": "E_SIGNING_KEY_MISSING"}
+
+        manifest_path = Path(package_result["package"]["manifest_path"])
+        manifest_content = manifest_path.read_text(encoding="utf-8")
+        manifest_sha = hashlib.sha256(manifest_content.encode("utf-8")).hexdigest()
+        signature = hmac.new(key.encode("utf-8"), manifest_content.encode("utf-8"), hashlib.sha256).hexdigest()
+        now = int(time.time())
+
+        signature_payload = {
+            "schema_version": 1,
+            "profile_id": profile_id,
+            "channel": channel,
+            "manifest_path": str(manifest_path),
+            "manifest_sha256": manifest_sha,
+            "signature": {
+                "algorithm": "HMAC-SHA256",
+                "signer_id": signer_id,
+                "value": signature,
+            },
+            "created_at": now,
+        }
+        signature_path = manifest_path.with_name("manifest.sig.json")
+        signature_path.write_text(json.dumps(signature_payload, sort_keys=True, indent=2), encoding="utf-8")
+
+        return {
+            "ok": True,
+            "signature_path": str(signature_path),
+            "signature": signature_payload,
+            "package": package_result["package"],
+        }
+
+    def verify_release_manifest_signature(self, profile_id: str, channel: str = "stable") -> dict:
+        key = self._signing_key()
+        if not key:
+            return {"ok": False, "error": "E_SIGNING_KEY_MISSING"}
+
+        manifest_path = self.out_dir / "productization" / "packaging" / profile_id / "manifest.json"
+        if not manifest_path.exists():
+            package_result = self.run_packaging_dry_run(profile_id, channel=channel)
+            if not package_result.get("ok"):
+                return {"ok": False, "error": "E_PACKAGING_FAILED", "details": package_result}
+            manifest_path = Path(package_result["package"]["manifest_path"])
+
+        signature_path = manifest_path.with_name("manifest.sig.json")
+        if not signature_path.exists():
+            return {"ok": False, "error": "E_SIGNATURE_NOT_FOUND", "path": str(signature_path)}
+
+        manifest_content = manifest_path.read_text(encoding="utf-8")
+        payload = json.loads(signature_path.read_text(encoding="utf-8"))
+        expected = hmac.new(key.encode("utf-8"), manifest_content.encode("utf-8"), hashlib.sha256).hexdigest()
+        actual = str(payload.get("signature", {}).get("value", ""))
+
+        return {
+            "ok": True,
+            "valid": expected == actual,
+            "expected": expected,
+            "actual": actual,
+            "signature_path": str(signature_path),
         }
 
     def export_diagnostics(self, scope: dict) -> dict:
@@ -275,3 +344,7 @@ class ProductizationService:
         if code.startswith("E_YT_") or code.startswith("E_KEYRING"):
             return "medium"
         return "info"
+
+    @staticmethod
+    def _signing_key() -> str:
+        return os.environ.get("VAS_RELEASE_SIGNING_KEY", "").strip()
