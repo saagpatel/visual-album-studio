@@ -28,6 +28,7 @@ YT_CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels?part=id,snippe
 YT_UPLOAD_INIT_URL = "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable"
 YT_VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos?part=snippet,status"
 YT_THUMBNAILS_URL = "https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
+YT_PLAYLIST_ITEMS_URL = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet"
 ALLOWED_HOST_SUFFIXES = ("googleapis.com", "googleusercontent.com", "youtube.com")
 
 
@@ -240,8 +241,10 @@ def cmd_resume_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
             data={
                 "bytes_uploaded": total_size,
                 "bytes_total": total_size,
+                "resume_offset": total_size,
                 "complete": True,
                 "video_id": video_id,
+                "etag": str(response_headers.get("etag", "")),
                 "raw": parsed,
             },
         )
@@ -256,8 +259,10 @@ def cmd_resume_upload(payload: Dict[str, Any]) -> Dict[str, Any]:
             data={
                 "bytes_uploaded": uploaded,
                 "bytes_total": total_size,
+                "resume_offset": uploaded,
                 "complete": uploaded >= total_size,
                 "session_url": session_url,
+                "etag": str(response_headers.get("etag", "")),
             },
         )
 
@@ -320,6 +325,68 @@ def cmd_upload_thumbnail(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+def cmd_attach_playlists(payload: Dict[str, Any]) -> Dict[str, Any]:
+    access_token = str(payload.get("access_token", "")).strip()
+    video_id = str(payload.get("video_id", "")).strip()
+    playlist_ids = payload.get("playlist_ids", [])
+    if not access_token:
+        return envelope(False, error_code="E_YT_AUTH_REQUIRED", http_status=401, data={"message": "access_token is required"})
+    if not video_id:
+        return envelope(False, error_code="E_YT_VIDEO_ID_MISSING", http_status=0, data={})
+    if not isinstance(playlist_ids, list):
+        return envelope(False, error_code="E_YT_PLAYLIST_INPUT_INVALID", http_status=0, data={})
+
+    attached: list[str] = []
+    for pid in playlist_ids:
+        playlist_id = str(pid).strip()
+        if not playlist_id:
+            continue
+        body = {
+            "snippet": {
+                "playlistId": playlist_id,
+                "resourceId": {"kind": "youtube#video", "videoId": video_id},
+            }
+        }
+        status, _headers, raw, parsed = http_json("POST", YT_PLAYLIST_ITEMS_URL, auth_headers(access_token), body)
+        if status not in (200, 201):
+            return envelope(
+                False,
+                error_code="E_YT_ATTACH_PLAYLIST_FAILED",
+                http_status=status,
+                retryable=is_retryable_status(status),
+                data={"playlist_id": playlist_id, "body": raw[:1000], "parsed": parsed},
+            )
+        attached.append(playlist_id)
+    return envelope(True, http_status=200, data={"video_id": video_id, "playlist_ids": attached})
+
+
+def cmd_readback_video(payload: Dict[str, Any]) -> Dict[str, Any]:
+    access_token = str(payload.get("access_token", "")).strip()
+    video_id = str(payload.get("video_id", "")).strip()
+    if not access_token:
+        return envelope(False, error_code="E_YT_AUTH_REQUIRED", http_status=401, data={"message": "access_token is required"})
+    if not video_id:
+        return envelope(False, error_code="E_YT_VIDEO_ID_MISSING", http_status=0, data={})
+
+    query = urllib.parse.urlencode({"part": "snippet,status", "id": video_id})
+    status, _headers, raw, parsed = http_json(
+        "GET",
+        f"https://www.googleapis.com/youtube/v3/videos?{query}",
+        auth_headers(access_token),
+    )
+    if status == 200:
+        items = parsed.get("items", []) if isinstance(parsed, dict) else []
+        first = items[0] if items else {}
+        return envelope(True, http_status=200, data=first if isinstance(first, dict) else {"raw": first})
+    return envelope(
+        False,
+        error_code="E_YT_READBACK_FAILED",
+        http_status=status,
+        retryable=is_retryable_status(status),
+        data={"body": raw[:1000], "parsed": parsed},
+    )
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print(json.dumps(envelope(False, error_code="E_ADAPTER_USAGE", data={"usage": "youtube_adapter.py <command> <payload_json>"})))
@@ -340,6 +407,8 @@ def main() -> int:
         "resume_upload": cmd_resume_upload,
         "apply_metadata": cmd_apply_metadata,
         "upload_thumbnail": cmd_upload_thumbnail,
+        "attach_playlists": cmd_attach_playlists,
+        "readback_video": cmd_readback_video,
     }
     fn = command_map.get(command)
     if fn is None:

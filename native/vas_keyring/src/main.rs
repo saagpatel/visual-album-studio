@@ -38,7 +38,7 @@ fn main() {
             }
         },
         "delete" => {
-            if let Err(err) = entry.delete_password() {
+            if let Err(err) = entry.delete_credential() {
                 eprintln!("keyring_delete_failed:{err}");
                 std::process::exit(1);
             }

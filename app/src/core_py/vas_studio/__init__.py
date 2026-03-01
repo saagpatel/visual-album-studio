@@ -1,5 +1,5 @@
 from .analysis_service import AnalysisService
-from .analytics import AnalyticsService, NicheNotebook
+from .analytics import AnalyticsService, AvailabilityStateV1, NicheNotebook
 from .automation import BatchPlanner, RemixEngine, VariantSpec
 from .asset_service import AssetService
 from .config import VasPaths
@@ -21,11 +21,12 @@ from .productization import (
 )
 from .registry import ParameterDef, ParameterRegistry
 from .ux_platform import AccessibilityReport, CommandResult, UxPlatformService, UxTokenSet
-from .youtube_publish import ChannelBindingGuard, QuotaBudget, ResumableUploadStore, UploadSession, pkce_pair
+from .youtube_publish import ChannelBindingGuard, PublishProfile, QuotaBudget, ResumableUploadStore, UploadSession, pkce_pair
 
 __all__ = [
     "AnalysisService",
     "AnalyticsService",
+    "AvailabilityStateV1",
     "AssetService",
     "BatchPlanner",
     "Db",
@@ -47,6 +48,7 @@ __all__ = [
     "Phase1Runtime",
     "PHOTO_PRESETS",
     "PhotoAnimator",
+    "PublishProfile",
     "ProductizationService",
     "QuotaBudget",
     "RemixEngine",

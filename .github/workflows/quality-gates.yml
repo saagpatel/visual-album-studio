@@ -40,3 +40,35 @@ jobs:
         env:
           VAS_SECURITY_STRICT: "1"
         run: bash .codex/scripts/run_verify_commands.sh
+
+  pinned-toolchain-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pinned Godot 4.4
+        run: |
+          mkdir -p out/tools/godot44/bin
+          curl -fsSL -o /tmp/godot44.zip \
+            https://github.com/godotengine/godot/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
+          unzip -q /tmp/godot44.zip -d out/tools/godot44/bin
+          mv out/tools/godot44/bin/Godot_v4.4-stable_linux.x86_64 out/tools/godot44/bin/godot
+          chmod +x out/tools/godot44/bin/godot
+
+      - name: Bootstrap toolchain
+        run: ./scripts/bootstrap.sh
+
+      - name: AT-001 pinned smoke
+        run: PATH="$PWD/out/tools/godot44/bin:$PATH" ./scripts/test/acceptance_phase_01.sh
+
+      - name: AT-007 pinned smoke
+        run: PATH="$PWD/out/tools/godot44/bin:$PATH" ./scripts/test/acceptance_phase_07.sh

@@ -61,18 +61,26 @@ func _run() -> int:
 		upload_file,
 		{
 			"title": "Acceptance Upload",
-			"quota_budget": 500,
-			"quota_used": 0,
 			"with_thumbnail": true,
 			"with_playlist": false,
 		},
 		"ch_A",
-		"ch_A"
+		"ch_A",
+		"profile_A",
+		{"daily_budget": 500, "used": 0}
 	)
 	if not _assert_true(bool(started.get("ok", false)), "publish session start"):
 		return 1
 	var start_data: Dictionary = started.get("data", {})
 	if not _assert_true(start_data.has("session_url"), "adapter envelope includes session_url"):
+		return 1
+	if not _assert_true(start_data.has("bytes_total"), "session bytes_total present"):
+		return 1
+	if not _assert_true(start_data.has("bytes_uploaded"), "session bytes_uploaded present"):
+		return 1
+	if not _assert_true(start_data.has("quota_estimate"), "session quota estimate present"):
+		return 1
+	if not _assert_true(String(start_data.get("channel_profile_id", "")) == "profile_A", "channel profile binding present"):
 		return 1
 
 	var resumed = publish_runtime.resume_upload_step(
@@ -86,15 +94,27 @@ func _run() -> int:
 	var resume_data: Dictionary = resumed.get("data", {})
 	if not _assert_true(bool(resume_data.get("complete", false)), "resume reaches complete state"):
 		return 1
+	if not _assert_true(resume_data.has("resume_offset"), "resume offset present"):
+		return 1
 	if not _assert_true(String(resume_data.get("video_id", "")).length() > 0, "resume provides video id"):
 		return 1
 
 	var finalized = publish_runtime.finalize_upload(
 		String(resume_data.get("video_id", "")),
-		{"title": "Acceptance Upload"},
+		{
+			"title": "Acceptance Upload",
+			"playlistIds": ["PL_TEST_A"],
+			"publishAt": "2030-01-01T00:00:00Z",
+			"privacyStatus": "private",
+		},
 		""
 	)
 	if not _assert_true(bool(finalized.get("ok", false)), "publish finalize metadata"):
+		return 1
+	var finalize_data: Dictionary = finalized.get("data", {})
+	if not _assert_true(bool(finalize_data.get("playlist_applied", false)), "playlist attach applied"):
+		return 1
+	if not _assert_true(bool(finalize_data.get("schedule_verified", false)), "schedule readback verified"):
 		return 1
 
 	print("AT-005 product-path acceptance passed")

@@ -35,9 +35,9 @@ Scales:
 | RSK-023 | Diagnostics bundles leak sensitive information through new support UX. | High | Low | Redaction pipeline as hard gate; schema validation; no environment dumps with secrets. | TS-015 and AT-007 diagnostics redaction assertions. | T/S/I/L/P (Phase 7) |
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
-## Recent updates (2026-02-22)
+## Recent updates (2026-03-01)
 - Phase 0 closure:
-  - hardening baseline synchronized to `main` at `325c5e5a8a3b094e6256b975ecd91658a55778c8`, removing branch/docs truth drift for release tracking.
+  - hardening baseline synchronized to `main` at `f969b2a2a1ef87ac5e3c03926ca10dc7c88a4b46`, removing branch/docs truth drift for release tracking.
 - RSK-009 mitigation strengthened:
   - `scripts/bootstrap.sh` now enforces checksum-field validity in `tools/ffmpeg/checksums.json` and verifies managed FFmpeg binary checksums when present.
 - RSK-011/RSK-014 mitigation strengthened:
@@ -48,3 +48,17 @@ Scales:
   - strict security audit now passes with `VAS_SECURITY_STRICT=1` and no active waivers; `docs/security-waivers.json` reset to an empty waiver list.
 - RSK-011/RSK-014 operational closure update:
   - `scripts/test/live_validation.py` now resolves trusted CA bundles via `VAS_SSL_CA_BUNDLE`, `SSL_CERT_FILE`, and `certifi`, and `scripts/test/capstone_audit.sh` auto-loads `scripts/test/live.env` when available so live closeout can execute in the capstone path on credentialed environments.
+- RSK-009/RSK-019 execution hardening update:
+  - `scripts/test/unit.sh` now builds `native/vas_keyring/target/debug/vas_keyring` automatically when missing, removing repeated acceptance/capstone failures caused by absent helper binaries.
+  - `scripts/test/security_audit.sh` now resolves `bandit` and `pip-audit` from `worker/.venv/bin` before strict-mode failure, reducing environment drift between local and CI gate behavior.
+- RSK-019 secret-hygiene hardening update:
+  - `scripts/test/repo_hygiene_audit.sh` now blocks tracked `.env` files (while allowing template files such as `.example`).
+  - `scripts/test/security_audit.sh` now detects Google OAuth-style secret patterns in tracked files.
+- RSK-019 keyring dependency closure update:
+  - `native/vas_keyring` upgraded from `keyring 2.3.3` to `keyring 3.6.3` (with native platform features), and keyring CLI compatibility updated for `delete_credential`.
+  - `cargo audit` now reports no advisory warnings for `native/vas_keyring/Cargo.lock`.
+- Phase 4-6 capstone evidence update:
+  - `env VAS_SECURITY_STRICT=1 ./scripts/test/capstone_audit.sh` passed end-to-end on `2026-03-01` with `result[acceptance_phase_04]=pass`, `result[acceptance_phase_05]=pass`, `result[acceptance_phase_06]=pass`, and `result[live_closeout]=pass`.
+  - Latest live closeout now reports zero skips:
+    - Phase 5: resumable upload interruption/resume passed using fixture evidence.
+    - Phase 6: revenue API 403 handled as policy-compliant fallback pass with `AT-006` fallback verification.

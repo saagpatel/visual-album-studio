@@ -21,6 +21,8 @@ class UploadSession:
     file_path: Path
     bytes_total: int
     bytes_uploaded: int = 0
+    etag: str = ""
+    updated_at: int = 0
 
 
 class ResumableUploadStore:
@@ -29,6 +31,7 @@ class ResumableUploadStore:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
 
     def save(self, session: UploadSession) -> None:
+        now = int(time.time())
         self.state_path.write_text(
             json.dumps(
                 {
@@ -36,6 +39,8 @@ class ResumableUploadStore:
                     "file_path": str(session.file_path),
                     "bytes_total": session.bytes_total,
                     "bytes_uploaded": session.bytes_uploaded,
+                    "etag": session.etag,
+                    "updated_at": session.updated_at or now,
                 },
                 indent=2,
             ),
@@ -51,6 +56,8 @@ class ResumableUploadStore:
             file_path=Path(d["file_path"]),
             bytes_total=int(d["bytes_total"]),
             bytes_uploaded=int(d["bytes_uploaded"]),
+            etag=str(d.get("etag", "")),
+            updated_at=int(d.get("updated_at", 0)),
         )
 
 
@@ -73,7 +80,29 @@ class QuotaBudget:
     def consume(self, units: int) -> None:
         self.used += units
 
+    def remaining(self) -> int:
+        return max(0, self.daily_budget - self.used)
+
+    def should_pause(self, estimated: int) -> bool:
+        return not self.can_run(estimated)
+
 
 class ChannelBindingGuard:
     def validate(self, selected_channel_id: str, profile_channel_id: str) -> bool:
         return selected_channel_id == profile_channel_id
+
+
+@dataclass
+class PublishProfile:
+    channel_profile_id: str
+    channel_id: str
+    channel_title: str
+    daily_quota_budget: int = 10000
+
+    def to_dict(self) -> dict:
+        return {
+            "channel_profile_id": self.channel_profile_id,
+            "channel_id": self.channel_id,
+            "channel_title": self.channel_title,
+            "daily_quota_budget": self.daily_quota_budget,
+        }

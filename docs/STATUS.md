@@ -1,16 +1,27 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Phase 7 complete on product paths; production-hardening baseline synced to `main` at `325c5e5a8a3b094e6256b975ecd91658a55778c8`
-**Last updated:** 2026-02-22
+**Current state:** Phase 7 complete on product paths; Phase 4-6 hardening implementation verified on working branch `codex/bootstrap-tests-docs-v1` at `409b09bcbe8ca0d53276be4cff5454434f452828` (baseline `main` reference: `f969b2a2a1ef87ac5e3c03926ca10dc7c88a4b46`)
+**Last updated:** 2026-03-01
 
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
 - Gate policy remains strict: no phase advancement until the current phase acceptance gate passes and prior gates remain green.
 
+## Latest Verification Snapshot (2026-03-01)
+- [x] Full strict capstone rerun passed on `2026-03-01T05:20:51Z`:
+  - `result[acceptance_phase_01..07]=pass`
+  - `result[determinism_rerun]=pass`
+  - `result[reliability_longrun]=pass`
+  - `result[security_audit]=pass`
+  - `result[repo_hygiene_audit]=pass`
+  - `result[live_closeout]=pass`
+- [x] Phase 5 live validation now passes resumable upload interruption/resume with zero skips using fixture `out/fixtures/live_test_video_large.mp4`.
+- [x] Phase 6 live validation remains pass with policy-compliant revenue fallback verification on provider `403`.
+
 ## Hardening Sprint Snapshot (2026-02-22)
-- [x] Phase 0 complete: canonical baseline synchronized to `main` (remote commit `325c5e5a8a3b094e6256b975ecd91658a55778c8`).
+- [x] Phase 0 complete: canonical baseline synchronized to `main` (remote commit `f969b2a2a1ef87ac5e3c03926ca10dc7c88a4b46`).
 - [x] CI quality workflow aligned to repo-native verification flow (`.github/workflows/quality-gates.yml` no longer uses Node lockfile-dependent install steps).
 - [x] Security audit strict mode (`VAS_SECURITY_STRICT=1`) now passes with no active waiver entries in `docs/security-waivers.json`.
 - [x] FFmpeg checksum placeholders removed from `tools/ffmpeg/checksums.json`; bootstrap enforces non-placeholder checksum policy and verifies managed binary when present.
@@ -19,8 +30,8 @@
 - [x] Legacy core_py security findings remediated (mapping eval removed, subprocess boundaries validated, assert runtime guards replaced).
 - [x] Live validation TLS trust path hardened in `scripts/test/live_validation.py` (CA bundle resolution via `VAS_SSL_CA_BUNDLE`/`SSL_CERT_FILE`/`certifi`).
 - [x] Regression confidence rerun:
-  - `bash .codex/scripts/run_verify_commands.sh` passed
-  - `./scripts/test/capstone_audit.sh` passed with `live_closeout=pass` when `scripts/test/live.env` is present
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` passed
+  - `env VAS_SECURITY_STRICT=1 ./scripts/test/capstone_audit.sh` passed with `result[live_closeout]=pass` on `2026-02-22T11:39:18Z`
 
 ## Historical Note (non-gating)
 - Legacy harness suites in `app/tests_py/**` and acceptance wrappers in `scripts/test/acceptance_phase_0*.sh` previously passed on 2026-02-16.
@@ -158,19 +169,33 @@
   - `out/logs/live_phase_05.log`
   - `out/logs/live_phase_06.log`
 
-## Pending Live Validation
-- Cleared on 2026-02-16 after successful live matrix execution for Phase 5 and Phase 6.
-- Phase 5 report summary: `pass=2`, `fail=0`, `skip=1` (`youtube_resumable_upload` skipped because `VAS_YT_TEST_VIDEO_PATH` was unset).
-- Phase 6 report summary: `pass=2`, `fail=0`, `skip=1` (`youtube_revenue_metric` skipped with `403`, allowed by matrix policy).
-- Capstone rerun note: `./scripts/test/capstone_audit.sh` executed `live_closeout.sh` in pending-prerequisites mode due missing local env vars on that run; this does not reopen Phase 5/6 because live validation was already cleared above.
+## Live Validation Closure
+- Latest credentialed run: `2026-03-01T05:20:51Z` via `env VAS_SECURITY_STRICT=1 ./scripts/test/capstone_audit.sh`.
+- Phase 5 report summary: `pass=3`, `fail=0`, `skip=0`.
+  - `keyring_roundtrip=pass`
+  - `youtube_channels_mine=pass`
+  - `youtube_resumable_upload=pass` (interrupted/resumed upload with fixture at `out/fixtures/live_test_video_large.mp4`).
+- Phase 6 report summary: `pass=3`, `fail=0`, `skip=0`.
+  - `youtube_analytics_report=pass`
+  - `youtube_reporting_jobs=pass`
+  - `youtube_revenue_metric=pass` via policy-compliant fallback verification when API returns `403` (`AT-006` revenue CSV import evidence).
 
 ## Risk Closure Updates
-- Closed: branch/mainline truth alignment complete; hardening baseline is now on `main` at `325c5e5a8a3b094e6256b975ecd91658a55778c8`.
+- Closed: branch/mainline truth alignment complete; baseline reference `main` is `f969b2a2a1ef87ac5e3c03926ca10dc7c88a4b46`.
 - Closed: pinned Godot `4.4.x` gate rerun completed successfully.
 - Closed: live provider validation blocker for Phase 5/6.
 - Closed: strict Bandit waiver burn-down complete; strict security audit now passes without `bandit_findings` waiver.
-- Closed: capstone live-closeout pending state on credentialed environments (`scripts/test/capstone_audit.sh` now sources `scripts/test/live.env` when available).
-- Open follow-up (LOW): Rust transitive advisory lifecycle tracking issue [#1](https://github.com/saagar210/visual-album-studio/issues/1) for warning-level upstream maintenance advisories in the keyring dependency graph.
+- Closed: capstone gate reliability drift from missing keyring helper and missing strict-tool discovery.
+  - `scripts/test/unit.sh` now auto-builds `native/vas_keyring/target/debug/vas_keyring` when absent.
+  - `scripts/test/security_audit.sh` now resolves `bandit`/`pip-audit` from `worker/.venv/bin` before failing strict mode.
+  - `scripts/test/capstone_audit.sh` now runs `./scripts/bootstrap.sh` before gate execution.
+- Closed: tracked secret-file hygiene and secret pattern detection hardening.
+  - `scripts/test/repo_hygiene_audit.sh` now blocks tracked `.env` files while allowing `.example/.sample` templates.
+  - `scripts/test/security_audit.sh` now scans tracked files for Google OAuth-style credential patterns (`GOCSPX-*`, refresh token `1//*`).
+- Closed: Phase 5/6 live skip follow-ups; live closeout now completes with no skips.
+- Closed: Rust advisory follow-up for keyring stack.
+  - `native/vas_keyring` upgraded to `keyring 3.6.3` with native platform features.
+  - `cargo audit` now reports no warnings for `native/vas_keyring/Cargo.lock`.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
