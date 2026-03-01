@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Final closeout candidate validated on `codex/project-closeout-final` with strict gates green at `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+**Current state:** Final closeout candidate validated on `codex/project-closeout-final` with strict gates green at `241dd383d7d63ed19c333873949a59902e5b29cc`
 **Last updated:** 2026-03-01
 
 ## Rebaseline Summary
@@ -11,17 +11,17 @@
 
 ## Closeout Constants (2026-03-01)
 - `CLOSEOUT_DATE_UTC`: `2026-03-01`
-- `CLOSEOUT_EVIDENCE_SHA`: `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+- `CLOSEOUT_EVIDENCE_SHA`: `241dd383d7d63ed19c333873949a59902e5b29cc`
 - `CLOSEOUT_TARGET_TAG`: `closeout-2026-03-01`
 
 ## Project Completion Candidate (2026-03-01)
-- [x] Strict verification rerun passed on `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`:
+- [x] Strict verification rerun passed on `241dd383d7d63ed19c333873949a59902e5b29cc`:
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
-- [x] Strict capstone rerun passed on `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`:
+- [x] Strict capstone rerun passed on `241dd383d7d63ed19c333873949a59902e5b29cc`:
   - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh`
   - `result[acceptance_phase_01..07]=pass`
   - `result[live_closeout]=pass`
-  - `capstone_finished=2026-03-01T06:08:31Z`
+  - `capstone_finished=2026-03-01T06:14:50Z`
 - [x] No active waivers:
   - `docs/security-waivers.json` contains an empty `waivers` array.
 - [x] Evidence files:
@@ -62,7 +62,7 @@
 - [x] Phase 6 live validation remains pass with policy-compliant revenue fallback verification on provider `403`.
 
 ## Hardening Sprint Snapshot (2026-02-22)
-- [x] Phase 0 complete: canonical baseline synchronized to `main` (remote commit `b7a69ebf548e4407c9dc59275687f0944e5f8ce8` as closeout evidence baseline).
+- [x] Phase 0 complete: canonical baseline synchronized to `main` (remote commit `241dd383d7d63ed19c333873949a59902e5b29cc` as closeout evidence baseline).
 - [x] CI quality workflow aligned to repo-native verification flow (`.github/workflows/quality-gates.yml` no longer uses Node lockfile-dependent install steps).
 - [x] Security audit strict mode (`VAS_SECURITY_STRICT=1`) now passes with no active waiver entries in `docs/security-waivers.json`.
 - [x] FFmpeg checksum placeholders removed from `tools/ffmpeg/checksums.json`; bootstrap enforces non-placeholder checksum policy and verifies managed binary when present.
@@ -222,7 +222,7 @@
   - `youtube_revenue_metric=pass` via policy-compliant fallback verification when API returns `403` (`AT-006` revenue CSV import evidence).
 
 ## Risk Closure Updates
-- Closed: branch/mainline truth alignment complete; closeout evidence reference is `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`.
+- Closed: branch/mainline truth alignment complete; closeout evidence reference is `241dd383d7d63ed19c333873949a59902e5b29cc`.
 - Closed: pinned Godot `4.4.x` gate rerun completed successfully.
 - Closed: live provider validation blocker for Phase 5/6.
 - Closed: strict Bandit waiver burn-down complete; strict security audit now passes without `bandit_findings` waiver.

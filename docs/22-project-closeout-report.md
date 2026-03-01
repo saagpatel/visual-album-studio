@@ -4,7 +4,7 @@
 Formally close Visual Album Studio delivery scope by consolidating final verification evidence, residual-risk ownership, and release checkpoint intent for an immutable completion record.
 
 ## Final Candidate SHA + Tag
-- Closeout evidence SHA: `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+- Closeout evidence SHA: `241dd383d7d63ed19c333873949a59902e5b29cc`
 - Closeout date (UTC): `2026-03-01`
 - Target release checkpoint tag: `closeout-2026-03-01`
 
@@ -12,8 +12,8 @@ Formally close Visual Album Studio delivery scope by consolidating final verific
 
 | Command | Source | Result |
 |---|---|---|
-| `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` | `.codex/verify.commands` | PASS on `b7a69ebf548e4407c9dc59275687f0944e5f8ce8` |
-| `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` | `docs/17-test-verification.md` | PASS; `result[acceptance_phase_01..07]=pass`; `result[live_closeout]=pass`; `capstone_finished=2026-03-01T06:08:31Z` |
+| `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` | `.codex/verify.commands` | PASS on `241dd383d7d63ed19c333873949a59902e5b29cc` |
+| `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` | `docs/17-test-verification.md` | PASS; `result[acceptance_phase_01..07]=pass`; `result[live_closeout]=pass`; `capstone_finished=2026-03-01T06:14:50Z` |
 
 Additional gate assertions:
 - `docs/security-waivers.json` contains no active waivers.
@@ -41,4 +41,4 @@ Additional gate assertions:
 | RSK-024 | T/I/J | Packaging nondeterminism is mitigated via dry-run determinism checks; full production packaging/signing remains a post-v1 track | Per release train initiation |
 
 ## Final Signoff Statement
-Visual Album Studio project scope defined by Phases 1-7, RQ-001..RQ-066, and associated AT/IT/TS contracts is complete at closeout evidence SHA `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`, pending final merge-to-main and release checkpoint tag publication.
+Visual Album Studio project scope defined by Phases 1-7, RQ-001..RQ-066, and associated AT/IT/TS contracts is complete at closeout evidence SHA `241dd383d7d63ed19c333873949a59902e5b29cc`, pending final merge-to-main and release checkpoint tag publication.

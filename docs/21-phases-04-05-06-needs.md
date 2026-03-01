@@ -8,7 +8,7 @@ Status reference:
 - Acceptance contracts are defined in `docs/phases/phase-04.md`, `docs/phases/phase-05.md`, and `docs/phases/phase-06.md`.
 - Closeout constants:
   - `CLOSEOUT_DATE_UTC=2026-03-01`
-  - `CLOSEOUT_EVIDENCE_SHA=b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+  - `CLOSEOUT_EVIDENCE_SHA=241dd383d7d63ed19c333873949a59902e5b29cc`
   - `CLOSEOUT_TARGET_TAG=closeout-2026-03-01`
 
 ## Phase 4 (Automation: Batch + Remix + Guardrails)
@@ -96,7 +96,7 @@ Provide quota-aware, privacy-safe analytics/revenue features that degrade gracef
 
 ## Final PM Go/No-Go Decision (2026-03-01)
 
-Candidate evaluated: `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+Candidate evaluated: `241dd383d7d63ed19c333873949a59902e5b29cc`
 
 Decision: **GO-COMPLETE**
 
@@ -109,7 +109,7 @@ Checklist outcomes:
    - Evidence: `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` pass, `docs/security-waivers.json` empty
 3. Live closeout passing from capstone on candidate SHA?
    - **Yes**
-   - Evidence: `out/logs/capstone_baseline/capstone_summary.txt` with `result[live_closeout]=pass`, capstone finish `2026-03-01T06:08:31Z`
+   - Evidence: `out/logs/capstone_baseline/capstone_summary.txt` with `result[live_closeout]=pass`, capstone finish `2026-03-01T06:14:50Z`
 4. Required AT gates (`AT-004`, `AT-005`, `AT-006`) green on product paths?
    - **Yes**
    - Evidence: capstone summary includes `result[acceptance_phase_04]=pass`, `result[acceptance_phase_05]=pass`, `result[acceptance_phase_06]=pass`

@@ -38,10 +38,10 @@ Scales:
 ## Recent updates (2026-03-01)
 - Closeout context constants:
   - `CLOSEOUT_DATE_UTC=2026-03-01`
-  - `CLOSEOUT_EVIDENCE_SHA=b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+  - `CLOSEOUT_EVIDENCE_SHA=241dd383d7d63ed19c333873949a59902e5b29cc`
   - `CLOSEOUT_TARGET_TAG=closeout-2026-03-01`
 - Phase 0 closure:
-  - hardening baseline synchronized to closeout evidence SHA `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`, removing branch/docs truth drift for release tracking.
+  - hardening baseline synchronized to closeout evidence SHA `241dd383d7d63ed19c333873949a59902e5b29cc`, removing branch/docs truth drift for release tracking.
 - RSK-009 mitigation strengthened:
   - `scripts/bootstrap.sh` now enforces checksum-field validity in `tools/ffmpeg/checksums.json` and verifies managed FFmpeg binary checksums when present.
 - RSK-011/RSK-014 mitigation strengthened:
@@ -67,6 +67,6 @@ Scales:
     - Phase 5: resumable upload interruption/resume passed using fixture evidence.
     - Phase 6: revenue API 403 handled as policy-compliant fallback pass with `AT-006` fallback verification.
 - Final closeout acceptance update:
-  - strict verification + strict capstone reruns passed on `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`.
+  - strict verification + strict capstone reruns passed on `241dd383d7d63ed19c333873949a59902e5b29cc`.
   - `docs/security-waivers.json` remains empty (no temporary waivers active).
   - residual risks are accepted with owners/modules and periodic review in `docs/22-project-closeout-report.md`.
