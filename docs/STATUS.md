@@ -102,6 +102,26 @@
   - v1 closeout remains complete and immutable under tag `closeout-2026-03-01`.
   - V2 is now active at Train 0 with governance/specification lane established.
 
+## V2 Program Rebaseline Kickoff (2026-03-01)
+- Execution board published for full-scope completion tracking:
+  - `docs/29-v2-train-execution-board.md`
+- GitHub milestone issue board opened:
+  - `#7` (M0), `#8` (M1), `#9` (M2), `#10` (M3), `#11` (M4), `#12` (M5)
+- Train 2-5 acceptance command contracts added:
+  - `scripts/test/acceptance_v2_train2.sh`
+  - `scripts/test/acceptance_v2_train3.sh`
+  - `scripts/test/acceptance_v2_train4.sh`
+  - `scripts/test/acceptance_v2_train5.sh`
+- Test catalog updated with required evidence-file contracts for `AT-V2-201`, `AT-V2-301`, `AT-V2-401`, `AT-V2-501`:
+  - `docs/26-v2-test-verification.md`
+- Execution baseline for kickoff:
+  - `main` / `f51a8bb3452aa109d254d929f1f14cd50c0844da`
+- Kickoff revalidation run:
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass (`AT-V2-000` included)
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T14:10:06Z`
+
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.

@@ -43,6 +43,11 @@ Train 1 acceptance contract:
   - parity + determinism for new modes
   - model provenance/license policy checks
   - fallback behavior for missing model assets
+  - command: `bash scripts/test/acceptance_v2_train2.sh`
+  - implementation evidence files (required):
+    - `app/tests_py/acceptance/test_atv2201_train2.py`
+    - `app/tests_py/unit/test_tsv2_201_mode_contracts.py`
+    - `app/tests_py/integration/test_itv2_202_model_registry_provenance.py`
 
 ### Train 3
 - `AT-V2-301`: provider expansion
@@ -51,6 +56,11 @@ Train 1 acceptance contract:
   - Instagram publish lane end-to-end
   - quota/policy failure taxonomy assertions
   - privacy/redaction checks across connector logs/diagnostics
+  - command: `bash scripts/test/acceptance_v2_train3.sh`
+  - implementation evidence files (required):
+    - `app/tests_py/acceptance/test_atv2301_train3.py`
+    - `app/tests_py/integration/test_itv2_301_distribution_adapter_contract.py`
+    - `app/tests_py/integration/test_itv2_304_provider_quota_policy.py`
 
 ### Train 4
 - `AT-V2-401`: collaboration and cloud GA
@@ -59,6 +69,11 @@ Train 1 acceptance contract:
   - deterministic conflict resolution scenarios
   - RBAC enforcement assertions
   - cloud outage fail-safe fallback to local mode
+  - command: `bash scripts/test/acceptance_v2_train4.sh`
+  - implementation evidence files (required):
+    - `app/tests_py/acceptance/test_atv2401_train4.py`
+    - `app/tests_py/integration/test_itv2_401_cloud_sync_offline_replay.py`
+    - `app/tests_py/integration/test_itv2_403_conflict_resolution_determinism.py`
 
 ### Train 5
 - `AT-V2-501`: final candidate closeout
@@ -66,6 +81,11 @@ Train 1 acceptance contract:
   - all prior `AT-V2-*` green
   - carry-forward v1 strict verify + capstone green on same SHA
   - accessibility, provenance, and security gates green
+  - command: `bash scripts/test/acceptance_v2_train5.sh`
+  - implementation evidence files (required):
+    - `app/tests_py/acceptance/test_atv2501_train5.py`
+    - `app/tests_py/integration/test_itv2_510_accessibility_gates.py`
+    - `app/tests_py/integration/test_itv2_511_provenance_closeout_bundle.py`
 
 ## Scenario matrix (mandatory)
 1. 4K 2h export interruption/resume.
@@ -76,6 +96,11 @@ Train 1 acceptance contract:
 6. Cloud outage while local workflows continue.
 7. Sensitive-data leak regression scans.
 8. Keyboard-only critical workflow verification.
+
+## Current execution note (2026-03-01)
+- `scripts/test/acceptance_v2_train2.sh` .. `scripts/test/acceptance_v2_train5.sh` are now present as command contracts.
+- Each script intentionally returns a non-zero status until its train acceptance suite file exists.
+- This prevents false green train closure while enabling deterministic command-level gating as each train is implemented.
 
 ## Release blockers
 - Any required gate result is `fail` or `not-run`.
