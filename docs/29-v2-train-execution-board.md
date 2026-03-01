@@ -23,7 +23,7 @@ Track full V2 execution from current baseline to 100% completion (`AT-V2-000` ..
 ## Milestone Board
 
 ### M0 - Program Rebaseline (Weeks 1-2)
-Status: `in_progress`
+Status: `completed`
 Dependencies: none
 Tracking issue: `#7`
 Tasks:
@@ -40,17 +40,17 @@ Exit criteria:
 - [x] No missing train gate command contracts for Trains 2-5
 
 ### M1 - Train 1 Full Closure (Months 1-2)
-Status: `pending`
+Status: `completed`
 Dependencies: M0
 Tracking issue: `#8`
 Scope: `RQ-V2-101..105`, `PV1-003`, `PV1-005`
 Tasks:
-- [ ] Harden 4K lane release profile and determinism boundary documentation
-- [ ] Packaging/signing promotion readiness, key rotation runbook, provenance verification contract
-- [ ] Publish Train 1 evidence pack and rollback playbook
+- [x] Harden 4K lane release profile and determinism boundary documentation
+- [x] Packaging/signing promotion readiness, key rotation runbook, provenance verification contract
+- [x] Publish Train 1 evidence pack and rollback playbook
 Exit criteria:
-- [ ] `AT-V2-101` pass with final Train 1 evidence pack
-- [ ] strict verify + strict capstone pass
+- [x] `AT-V2-101` pass with final Train 1 evidence pack
+- [x] strict verify + strict capstone pass
 
 ### M2 - Train 2 Delivery (Months 3-5)
 Status: `pending`

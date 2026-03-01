@@ -31,11 +31,14 @@ Train 1 acceptance contract:
   - 4K determinism fixture reruns
   - 4K long-run interruption/resume
   - signed package verification and channel promotion checks
+  - release promotion/rollback runbook and key-rotation/provenance contract published
   - command: `bash scripts/test/acceptance_v2_train1.sh`
   - implementation evidence files:
     - `app/tests_py/acceptance/test_atv2101_train1.py`
     - `app/tests_py/unit/test_tsv2_101_packaging_signature.py`
     - `app/tests_py/integration/test_itv2_103_release_channel_promotion.py`
+    - `docs/31-v2-train1-release-runbook.md`
+    - `docs/32-v2-train1-evidence-pack.md`
 
 ### Train 2
 - `AT-V2-201`: rendering/ML expansion

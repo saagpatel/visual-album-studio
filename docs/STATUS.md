@@ -122,6 +122,19 @@
   - `result[live_closeout]=pass`
   - `capstone_finished=2026-03-01T14:10:06Z`
 
+## V2 Train 1 Closure (2026-03-01)
+- Train 1 closure artifacts published:
+  - `docs/31-v2-train1-release-runbook.md`
+  - `docs/32-v2-train1-evidence-pack.md`
+- Train 1 gate verification:
+  - `bash scripts/test/acceptance_v2_train1.sh` => pass (`1 passed`)
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T14:20:15Z`
+- Milestone state:
+  - `M0` complete, `M1` complete, `M2` next active implementation lane.
+
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
