@@ -14,7 +14,7 @@ Legend:
 
 | RQ ID | Backlog Item | Requirement statement | Wave | Primary modules/interfaces | Planned tests | Status |
 |---|---|---|---|---|---|---|
-| RQ-PV2-001 | PV2-001 | Adaptive model auto-selection must use hardware profile + telemetry with deterministic fallback and incident traceability. | Wave 1 | `ModelRegistryServiceV2`, `PhotoAnimator` | TS-PV2-001, IT-PV2-001, AT-PV2-001 | in-progress |
+| RQ-PV2-001 | PV2-001 | Adaptive model auto-selection must use hardware profile + telemetry with deterministic fallback and incident traceability. | Wave 1 | `ModelRegistryServiceV2`, `PhotoAnimator` | TS-PV2-001, IT-PV2-001, AT-PV2-001 | pass |
 | RQ-PV2-002 | PV2-002 | Cross-project style transfer preset exchange must enforce schema compatibility, permissions, and provenance validation. | Wave 4 | `PresetExchangeServiceV1` (new), collaboration permissions surface | TS-PV2-002, IT-PV2-002, AT-PV2-002 | not-started |
 | RQ-PV2-101 | PV2-101 | Distribution adapter layer must support additional provider lanes (Facebook Reels, X) with quota/policy preflight and normalized errors. | Wave 2 | `DistributionAdapter`, `DistributionServiceV2` | IT-PV2-101-A/B, AT-PV2-101 | not-started |
 | RQ-PV2-102 | PV2-102 | Scheduler must optimize dispatch across providers using quota/policy constraints and resilient retry/backoff behavior. | Wave 3 | `DistributionSchedulingServiceV1` (new) | TS-PV2-102, IT-PV2-102, AT-PV2-102 | not-started |

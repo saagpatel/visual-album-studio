@@ -7,7 +7,7 @@ Track full V2 execution from current baseline to 100% completion (`AT-V2-000` ..
 The V2 train program is complete; execution now extends to Post-V2 backlog closure using the Wave plan in `docs/36-postv2-phase-blueprint.md`.
 
 Post-V2 wave tracking issues:
-- `#19` - `PV2-001` adaptive model auto-selection completion
+- `#19` - `PV2-001` adaptive model auto-selection completion (`completed`)
 - `#20` - `PV2-002` style-transfer preset exchange
 - `#21` - `PV2-101` provider expansion (Facebook Reels, X)
 - `#22` - `PV2-102` scheduling optimization engine
@@ -24,6 +24,7 @@ Post-V2 control-plane artifacts:
 - `scripts/test/acceptance_pv2_102.sh`
 - `scripts/test/acceptance_pv2_201.sh`
 - `scripts/test/acceptance_pv2_202.sh`
+- `docs/39-postv2-ops-runbook.md`
 
 ## Program Constants
 - Owner: `saagar210`

@@ -36,6 +36,10 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
+- Post-V2 Wave 1 (`PV2-001`) closure update:
+  - adaptive model-selection drift guard added (missing/checksum mismatch detection).
+  - evaluation auto-ingestion now records hardware benchmark telemetry for selection.
+  - Wave 1 gates passed: `acceptance_pv2_001`, strict verify, strict capstone (`live_closeout=pass`).
 - Post-V2 Wave 0 control-plane kickoff:
   - Post-V2 governance and verification docs published:
     - `docs/36-postv2-phase-blueprint.md`

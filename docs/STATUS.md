@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 and V2 closeout are complete on `main`; Post-V2 Wave 0 control-plane execution is active for backlog items `PV2-001/002/101/102/201/202`.
+**Current state:** V1 and V2 closeout are complete on `main`; Post-V2 Wave 0 is complete and Wave 1 (`PV2-001`) is complete with acceptance and strict-gate evidence.
 **Last updated:** 2026-03-01
 
 ## Post-V2 Wave 0 Control-Plane Kickoff (2026-03-01)
@@ -35,6 +35,28 @@
     - `out/logs/capstone_baseline/capstone_summary.txt`
     - `out/logs/capstone_baseline/security_audit_report.txt`
     - `out/logs/capstone_baseline/repo_hygiene_report.txt`
+
+## Post-V2 Wave 1 Closure - PV2-001 (2026-03-01)
+- Scope closed:
+  - adaptive model auto-selection telemetry ingestion and drift safeguards
+  - deterministic selection tie-break policy
+  - operations runbook section for model-selection incident handling
+- Wave 1 artifacts:
+  - `app/tests_py/unit/test_tspv2_001_selection_policy.py`
+  - `app/tests_py/integration/test_itpv2_001_eval_ingestion_and_drift_guard.py`
+  - `app/tests_py/acceptance/test_atpv2_001_model_autoselection_completion.py`
+  - `docs/39-postv2-ops-runbook.md`
+- Gate evidence:
+  - `bash scripts/test/acceptance_pv2_001.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T17:43:33Z`
+- Evidence pointers:
+  - `out/logs/acceptance_pv2_001.log`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
 
 ## V2 Baseline Checkpoint (2026-03-01)
 - Canonical V2 execution baseline SHA: `502e2be460dd395da9f6b5ba80b892d31a3a45cf` (`main` == `origin/main` at checkpoint time).

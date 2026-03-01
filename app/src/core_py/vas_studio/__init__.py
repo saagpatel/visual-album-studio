@@ -31,7 +31,14 @@ from .mapping import MappingContext, MappingService
 from .mixer import MixerService
 from .modes import LANDSCAPE_PRESETS, PARTICLE_PRESETS, PHOTO_PRESETS, ModePreset
 from .modes_v2 import NEXT_GEN_PRESETS, ModePresetV2
-from .model_registry_v2 import HardwareProfileV1, ModelProvenanceRecordV1, ModelRegistryServiceV2
+from .model_registry_v2 import (
+    HardwareProfileV1,
+    ModelBenchmarkSampleV1,
+    ModelProvenanceRecordV1,
+    ModelRegistryServiceV2,
+    ModelSelectionDecisionV2,
+    SelectionIncidentV1,
+)
 from .phase1 import Phase1Runtime
 from .photo_animator import ModelManager, PhotoAnimator
 from .productization import (
@@ -68,11 +75,13 @@ __all__ = [
     "MappingService",
     "MixerService",
     "MigrationRunner",
+    "ModelBenchmarkSampleV1",
     "ModePreset",
     "ModePresetV2",
     "ModelManager",
     "ModelProvenanceRecordV1",
     "ModelRegistryServiceV2",
+    "ModelSelectionDecisionV2",
     "NEXT_GEN_PRESETS",
     "NicheNotebook",
     "ObjectStorageAdapter",
@@ -92,6 +101,7 @@ __all__ = [
     "RemixEngine",
     "ResumableUploadStore",
     "SupportReport",
+    "SelectionIncidentV1",
     "SyncEnvelopeV1",
     "DiagnosticsBundleInfo",
     "TikTokDistributionAdapter",

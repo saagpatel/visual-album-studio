@@ -54,6 +54,65 @@ class HardwareProfileV1:
         }
 
 
+@dataclass
+class ModelBenchmarkSampleV1:
+    model_id: str
+    profile_class: str
+    avg_fps: float
+    p95_latency_ms: float
+    memory_mb: float
+    success_rate: float
+    source: str = "evaluation"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "model_id": self.model_id,
+            "profile_class": self.profile_class,
+            "avg_fps": float(self.avg_fps),
+            "p95_latency_ms": float(self.p95_latency_ms),
+            "memory_mb": float(self.memory_mb),
+            "success_rate": float(self.success_rate),
+            "source": self.source,
+        }
+
+
+@dataclass
+class SelectionIncidentV1:
+    model_id: str
+    issue_code: str
+    details: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 1,
+            "model_id": self.model_id,
+            "issue_code": self.issue_code,
+            "details": dict(self.details),
+        }
+
+
+@dataclass
+class ModelSelectionDecisionV2:
+    ok: bool
+    model_id: str | None
+    profile_class: str
+    candidates: list[dict[str, Any]]
+    incidents: list[dict[str, Any]]
+    error: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": 2,
+            "ok": bool(self.ok),
+            "model_id": self.model_id,
+            "profile_class": self.profile_class,
+            "candidates": list(self.candidates),
+            "incidents": list(self.incidents),
+            "error": self.error,
+        }
+
+
 class ModelRegistryServiceV2:
     def __init__(self, db, models_dir: Path):
         self.db = db
@@ -215,6 +274,10 @@ class ModelRegistryServiceV2:
         quality_score: float,
         perf_fps: float,
         safety_score: float,
+        hardware_profile: HardwareProfileV1 | None = None,
+        p95_latency_ms: float | None = None,
+        memory_mb: float | None = None,
+        success_rate: float | None = None,
         notes: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not self.get_model(model_id):
@@ -237,8 +300,38 @@ class ModelRegistryServiceV2:
                 now,
             ),
         )
+        benchmark_id: str | None = None
+        if hardware_profile is not None and self._has_table("model_hw_benchmarks"):
+            profile_class = self.classify_hardware_profile(hardware_profile)
+            perf_value = max(float(perf_fps), 0.0)
+            latency_value = float(p95_latency_ms) if p95_latency_ms is not None else (1000.0 / max(perf_value, 1.0))
+            memory_value = max(float(memory_mb), 0.0) if memory_mb is not None else float((notes or {}).get("memory_mb", 0.0))
+            success_value = 1.0 if success_rate is None else max(0.0, min(1.0, float(success_rate)))
+            sample = ModelBenchmarkSampleV1(
+                model_id=model_id,
+                profile_class=profile_class,
+                avg_fps=perf_value,
+                p95_latency_ms=max(latency_value, 1.0),
+                memory_mb=max(memory_value, 0.0),
+                success_rate=success_value,
+                source="evaluation",
+            )
+            benchmark_result = self.record_hardware_benchmark(
+                model_id=model_id,
+                profile_class=sample.profile_class,
+                avg_fps=sample.avg_fps,
+                p95_latency_ms=sample.p95_latency_ms,
+                memory_mb=sample.memory_mb,
+                success_rate=sample.success_rate,
+                notes={"source": sample.source, "fixture_id": fixture_id},
+            )
+            if benchmark_result.get("ok"):
+                benchmark_id = str(benchmark_result.get("id", ""))
         self.db.commit()
-        return {"ok": True, "id": eval_id}
+        result = {"ok": True, "id": eval_id}
+        if benchmark_id:
+            result["benchmark_id"] = benchmark_id
+        return result
 
     def record_hardware_benchmark(
         self,
@@ -381,6 +474,44 @@ class ModelRegistryServiceV2:
         self.db.commit()
         return {"ok": True, "id": event_id}
 
+    def detect_model_artifact_drift(self, *, model_id: str | None = None) -> dict[str, Any]:
+        incidents: list[dict[str, Any]] = []
+        if model_id:
+            rows = self.db.execute("SELECT * FROM model_registry WHERE id = ?", (model_id,)).fetchall()
+        else:
+            rows = self.db.execute("SELECT * FROM model_registry WHERE status = 'active'").fetchall()
+
+        for row in rows:
+            model = dict(row)
+            current_id = str(model.get("id", ""))
+            expected_sha = str(model.get("sha256", "")).strip()
+            model_path = self.resolve_model_path(current_id)
+            if model_path is None:
+                incidents.append(
+                    SelectionIncidentV1(
+                        model_id=current_id,
+                        issue_code="E_MODEL_NOT_INSTALLED",
+                        details={"path": str((self.models_dir / str(model.get("relpath", "")).strip()))},
+                    ).to_dict()
+                )
+                continue
+            if expected_sha:
+                checksum = self.verify_checksum(model_path, expected_sha)
+                if not checksum.get("ok"):
+                    incidents.append(
+                        SelectionIncidentV1(
+                            model_id=current_id,
+                            issue_code="E_MODEL_CHECKSUM_MISMATCH",
+                            details={
+                                "path": str(model_path),
+                                "expected_sha256": str(checksum.get("expected_sha256", "")),
+                                "actual_sha256": str(checksum.get("actual_sha256", "")),
+                            },
+                        ).to_dict()
+                    )
+
+        return {"ok": True, "incidents": incidents, "count": len(incidents)}
+
     def recommend_model_for_hardware(
         self,
         *,
@@ -394,13 +525,18 @@ class ModelRegistryServiceV2:
         rows = self.db.execute("SELECT * FROM model_registry WHERE status = 'active'").fetchall()
         profile_class = self.classify_hardware_profile(hardware_profile)
         candidates: list[dict[str, Any]] = []
+        incidents = self.detect_model_artifact_drift()
+        incident_by_model = {str(item.get("model_id", "")): item for item in incidents.get("incidents", [])}
         for row in rows:
             model = dict(row)
             details = self._parse_details(model)
             family = str(details.get("family", "")).strip()
             if model_family and family and family != model_family:
                 continue
-            model_path = self.resolve_model_path(str(model["id"]))
+            current_model_id = str(model["id"])
+            model_path = self.resolve_model_path(current_model_id)
+            incident = incident_by_model.get(current_model_id)
+            checksum_ok = incident is None or str(incident.get("issue_code", "")) != "E_MODEL_CHECKSUM_MISMATCH"
 
             eval_row = self.db.execute(
                 """
@@ -416,7 +552,7 @@ class ModelRegistryServiceV2:
             quality = float(eval_row["quality"] or 0.0)
             perf = float(eval_row["perf"] or 0.0)
             safety = float(eval_row["safety"] or 0.0)
-            compat = self._is_compatible(details, hardware_profile) and model_path is not None
+            compat = self._is_compatible(details, hardware_profile) and model_path is not None and checksum_ok
             bench = self._benchmark_summary(model_id=model["id"], profile_class=profile_class)
             bench_perf = perf if bench is None else float(bench["avg_fps"])
             bench_latency = 0.0 if bench is None else float(bench["p95_latency_ms"])
@@ -443,6 +579,8 @@ class ModelRegistryServiceV2:
                 "base_score": base_score,
                 "details": details,
                 "installed": model_path is not None,
+                "checksum_ok": checksum_ok,
+                "incident": dict(incident) if incident is not None else {},
             }
             if compat:
                 bonus = 0.0
@@ -461,23 +599,31 @@ class ModelRegistryServiceV2:
             candidates.append(candidate)
 
         compatible = [item for item in candidates if item["compatible"]]
-        compatible.sort(key=lambda item: (item["rank_score"], item["perf_fps"], item["quality_score"]), reverse=True)
+        compatible.sort(
+            key=lambda item: (item["rank_score"], item["perf_fps"], item["quality_score"], str(item["model_id"])),
+            reverse=True,
+        )
         if not compatible:
-            return {
-                "ok": False,
-                "error": "E_MODEL_NO_COMPATIBLE",
+            return ModelSelectionDecisionV2(
+                ok=False,
+                model_id=None,
+                profile_class=profile_class,
+                candidates=candidates,
+                incidents=list(incidents.get("incidents", [])),
+                error="E_MODEL_NO_COMPATIBLE",
+            ).to_dict() | {
                 "model_family": model_family,
-                "profile_class": profile_class,
                 "hardware_profile": hardware_profile.to_dict(),
-                "candidates": candidates,
             }
 
         best = compatible[0]
-        return {
-            "ok": True,
-            "model_id": best["model_id"],
+        return ModelSelectionDecisionV2(
+            ok=True,
+            model_id=str(best["model_id"]),
+            profile_class=profile_class,
+            candidates=compatible,
+            incidents=list(incidents.get("incidents", [])),
+        ).to_dict() | {
             "model_family": model_family,
-            "profile_class": profile_class,
             "hardware_profile": hardware_profile.to_dict(),
-            "candidates": compatible,
         }

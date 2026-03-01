@@ -26,7 +26,7 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
     - `#22` (`PV2-102`)
     - `#23` (`PV2-201`)
     - `#24` (`PV2-202`)
-- `PV2-001`: in progress (execution started 2026-03-01)
+- `PV2-001`: complete (wave 1 closure on 2026-03-01)
   - initial slice delivered:
     - hardware profile contract (`HardwareProfileV1`)
     - adaptive model recommendation logic in `ModelRegistryServiceV2`
@@ -45,6 +45,17 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
     - auto-selection telemetry now records final outcome after model-path resolution (`selected` vs `fallback`)
     - added regression for missing-model drift to ensure fallback + telemetry accuracy:
       - `app/tests_py/integration/test_itpv2_001_adaptive_model_selection.py::test_itpv2_001_missing_model_file_forces_fallback_event`
+  - wave 1 closure additions:
+    - evaluation-to-benchmark auto-ingestion and profile telemetry normalization in `ModelRegistryServiceV2.record_evaluation(...)`
+    - checksum/missing-artifact drift detection via `ModelRegistryServiceV2.detect_model_artifact_drift(...)`
+    - deterministic tie-break policy for equal-rank candidates
+    - new closure test/evidence suites:
+      - `app/tests_py/unit/test_tspv2_001_selection_policy.py`
+      - `app/tests_py/integration/test_itpv2_001_eval_ingestion_and_drift_guard.py`
+      - `app/tests_py/acceptance/test_atpv2_001_model_autoselection_completion.py`
+      - `scripts/test/acceptance_pv2_001.sh`
+    - operations runbook section:
+      - `docs/39-postv2-ops-runbook.md`
 - Remaining backlog items are not started in implementation code:
   - `PV2-002`, `PV2-101`, `PV2-102`, `PV2-201`, `PV2-202`
 
