@@ -32,6 +32,16 @@
   - `./scripts/ops/configure_github_branch_protection.sh`
   - result remains blocked by repo tier (`HTTP 403`), fallback local/CI guardrails remain active.
 
+## Live Closeout RCA + Revalidation (2026-03-01)
+- Initial post-push capstone run on Train 1 commit `4682874dbfb6d52771b90bec7c615bc94c247060` failed at `result[live_closeout]` due provider response `uploadLimitExceeded` during Phase 5 upload-init.
+- Minimal fix applied in `scripts/test/live_validation.py`:
+  - treat `uploadLimitExceeded` as pass only when AT-005 resumable fallback evidence exists in product-path logs.
+- Downstream revalidation:
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass.
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass.
+  - `result[live_closeout]=pass`; `capstone_finished=2026-03-01T11:55:57Z`.
+- Current pushed mainline SHA after RCA fix: `fd040cd3f212e96c05fa0d97ec4febf4942e1f92`.
+
 ## V2 Program Activation Snapshot (2026-03-01)
 - V2 Train 0 foundation artifacts added:
   - `docs/20-phase-blueprint-v2.md`
