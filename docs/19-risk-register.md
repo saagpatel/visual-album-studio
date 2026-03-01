@@ -61,6 +61,13 @@ Scales:
 - RSK-019 keyring dependency closure update:
   - `native/vas_keyring` upgraded from `keyring 2.3.3` to `keyring 3.6.3` (with native platform features), and keyring CLI compatibility updated for `delete_credential`.
   - `cargo audit` now reports no advisory warnings for `native/vas_keyring/Cargo.lock`.
+- RSK-019 hardening continuation update:
+  - `native/vas_keyring/src/main.rs` now supports `--from-stdin` for `set`, and `scripts/test/live_validation.py` / `IT-004` now use stdin secret handoff where supported.
+  - `scripts/youtube_adapter.py` now supports optional `--token-stdin` mode for non-Godot subprocess callers (`IT-013` coverage).
+  - `scripts/test/security_audit.sh` now enforces generated secret filename denylist checks (`scripts/test/live.env.generated`, `.env.generated`).
+- Ownership map cadence update:
+  - `scripts/ops/export_security_ownership_map.sh` exports security-critical ownership artifacts to `out/logs/security/*`.
+  - `.github/workflows/security-ownership-map-cadence.yml` publishes recurring ownership-map artifacts on weekly cadence.
 - Phase 4-6 capstone evidence update:
   - `env VAS_SECURITY_STRICT=1 ./scripts/test/capstone_audit.sh` passed end-to-end on `2026-03-01` with `result[acceptance_phase_04]=pass`, `result[acceptance_phase_05]=pass`, `result[acceptance_phase_06]=pass`, and `result[live_closeout]=pass`.
   - Latest live closeout now reports zero skips:

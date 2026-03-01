@@ -64,6 +64,12 @@
   - `main` / `38dac43e96b0e6d7b97dfb7eaabd96e774d03a70`
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
   - Evidence: `out/logs/capstone_baseline/security_audit_report.txt`
+- Hardening remediation completion:
+  - `SEC-005` complete (stdin token/secret handoff enabled for non-Godot subprocess paths).
+  - `SEC-006` complete (`security_audit.sh` denylist gate for generated secret filenames).
+  - `SEC-007` complete (recurring ownership-map export artifact and schedule).
+  - Ownership-map artifacts: `out/logs/security/security_ownership_map.md`, `out/logs/security/security_ownership_map.json`.
+  - Cadence workflow: `.github/workflows/security-ownership-map-cadence.yml`.
 
 ## V2 Program Activation Snapshot (2026-03-01)
 - V2 Train 0 foundation artifacts added:

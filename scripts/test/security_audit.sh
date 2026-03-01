@@ -110,6 +110,34 @@ fi
 rm -f /tmp/vas_token_hits.txt
 
 echo ""
+echo "[generated_secret_filename_denylist]"
+DENYLIST_PATHS=(
+  "scripts/test/live.env.generated"
+  ".env.generated"
+)
+
+denylist_fail=0
+for path in "${DENYLIST_PATHS[@]}"; do
+  if git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
+    echo "tracked_forbidden_secret_file=$path"
+    denylist_fail=1
+    continue
+  fi
+  if [[ -f "$path" ]]; then
+    echo "local_forbidden_secret_file_present=$path"
+    denylist_fail=1
+  fi
+done
+
+if [[ "$denylist_fail" -ne 0 ]]; then
+  strict_failed_check \
+    "generated_secret_filename_denylist" \
+    "generated_secret_filename_denylist=fail (remove forbidden generated secret files)" || true
+else
+  echo "generated_secret_filename_denylist=pass"
+fi
+
+echo ""
 echo "[python_security_lint]"
 if command -v bandit >/dev/null 2>&1; then
   if bandit -q -r worker/vas_audio_worker app/src/core_py scripts/youtube_adapter.py \

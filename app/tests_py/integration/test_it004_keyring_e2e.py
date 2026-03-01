@@ -8,14 +8,12 @@ def test_it004_keyring_roundtrip(repo_root):
     account = f"acct-{uuid.uuid4().hex[:8]}"
     secret = "test-secret"
 
-    env = dict(os.environ)
-    env["VAS_KEYRING_SECRET"] = secret
     set_proc = subprocess.run(
-        [str(bin_path), "set", service, account, "--from-env"],
+        [str(bin_path), "set", service, account, "--from-stdin"],
         capture_output=True,
         text=True,
+        input=secret,
         check=False,
-        env=env,
     )
     if set_proc.returncode != 0:
         import pytest

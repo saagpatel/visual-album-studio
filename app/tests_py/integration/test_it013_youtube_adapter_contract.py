@@ -4,17 +4,24 @@ import subprocess
 from pathlib import Path
 
 
-def _run(repo_root: Path, command: str, payload: dict, access_token: str = "") -> dict:
+def _run(repo_root: Path, command: str, payload: dict, access_token: str = "", token_handoff: str = "env") -> dict:
     script = repo_root / "scripts" / "youtube_adapter.py"
     env = dict(os.environ)
+    cmd = ["python3", str(script), command, json.dumps(payload)]
+    stdin_value = None
     if access_token:
-        env["VAS_YT_ACCESS_TOKEN"] = access_token
+        if token_handoff == "stdin":
+            cmd.append("--token-stdin")
+            stdin_value = access_token
+        else:
+            env["VAS_YT_ACCESS_TOKEN"] = access_token
     proc = subprocess.run(
-        ["python3", str(script), command, json.dumps(payload)],
+        cmd,
         capture_output=True,
         text=True,
         check=False,
         env=env,
+        input=stdin_value,
     )
     assert proc.returncode == 0
     body = proc.stdout.strip()
@@ -83,3 +90,18 @@ def test_it013_payload_token_disallowed_by_default(repo_root: Path):
     )
     assert result["ok"] is False
     assert result["error_code"] == "E_YT_AUTH_REQUIRED"
+
+
+def test_it013_stdin_token_handoff(repo_root: Path):
+    result = _run(
+        repo_root,
+        "start_resumable_upload",
+        {
+            "file_path": str(repo_root / "out" / "missing-video.mp4"),
+            "metadata": {},
+        },
+        access_token="tkn",
+        token_handoff="stdin",
+    )
+    assert result["ok"] is False
+    assert result["error_code"] == "E_YT_FILE_NOT_FOUND"

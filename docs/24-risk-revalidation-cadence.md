@@ -29,6 +29,12 @@ Define and operationalize recurring revalidation of accepted residual risks docu
 - Behavior:
   - Opens a dated cadence issue when no matching open issue exists.
   - Includes required checks for strict verification, capstone evidence, and waiver status.
+- Ownership-map export automation:
+  - Workflow: `.github/workflows/security-ownership-map-cadence.yml`
+  - Script: `scripts/ops/export_security_ownership_map.sh`
+  - Output artifacts:
+    - `out/logs/security/security_ownership_map.md`
+    - `out/logs/security/security_ownership_map.json`
 
 ## Required Evidence for Each Cadence Run
 1. Latest strict verify result:

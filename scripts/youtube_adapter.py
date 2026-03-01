@@ -30,6 +30,7 @@ YT_VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos?part=snippet,statu
 YT_THUMBNAILS_URL = "https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
 YT_PLAYLIST_ITEMS_URL = "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet"
 ALLOWED_HOST_SUFFIXES = ("googleapis.com", "googleusercontent.com", "youtube.com")
+STDIN_BEARER: str | None = None
 
 
 def envelope(
@@ -119,6 +120,8 @@ def token_from_payload(payload: Dict[str, Any]) -> str:
     env_token = os.environ.get("VAS_YT_ACCESS_TOKEN", "").strip()
     if env_token:
         return env_token
+    if STDIN_BEARER:
+        return STDIN_BEARER
     if os.environ.get("VAS_ALLOW_INSECURE_TOKEN_PAYLOAD", "0") == "1":
         return str(payload.get("access_token", "")).strip()
     return ""
@@ -398,8 +401,13 @@ def cmd_readback_video(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print(json.dumps(envelope(False, error_code="E_ADAPTER_USAGE", data={"usage": "youtube_adapter.py <command> <payload_json>"})))
+    global STDIN_BEARER
+
+    if len(sys.argv) not in (3, 4):
+        print(json.dumps(envelope(False, error_code="E_ADAPTER_USAGE", data={"usage": "youtube_adapter.py <command> <payload_json> [--token-stdin]"})))
+        return 0
+    if len(sys.argv) == 4 and sys.argv[3].strip() != "--token-stdin":
+        print(json.dumps(envelope(False, error_code="E_ADAPTER_USAGE", data={"usage": "youtube_adapter.py <command> <payload_json> [--token-stdin]"})))
         return 0
 
     command = sys.argv[1].strip()
@@ -410,6 +418,8 @@ def main() -> int:
     except json.JSONDecodeError:
         print(json.dumps(envelope(False, error_code="E_ADAPTER_BAD_PAYLOAD")))
         return 0
+    if len(sys.argv) == 4:
+        STDIN_BEARER = sys.stdin.read().strip()
 
     command_map = {
         "list_channels": cmd_list_channels,

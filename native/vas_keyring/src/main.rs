@@ -1,8 +1,28 @@
 use keyring::Entry;
 use std::env;
+use std::io::{self, Read};
 
 fn usage() {
-    eprintln!("usage: vas_keyring <set|get|delete> <service> <account> [--from-env]");
+    eprintln!("usage: vas_keyring <set|get|delete> <service> <account> [--from-env|--from-stdin]");
+}
+
+fn secret_from_env() -> String {
+    match env::var("VAS_KEYRING_SECRET") {
+        Ok(v) => v,
+        Err(_) => {
+            eprintln!("keyring_set_failed:missing_secret");
+            std::process::exit(2);
+        }
+    }
+}
+
+fn secret_from_stdin() -> String {
+    let mut buf = String::new();
+    if io::stdin().read_to_string(&mut buf).is_err() {
+        eprintln!("keyring_set_failed:stdin_read_failed");
+        std::process::exit(2);
+    }
+    buf.trim_end_matches(['\r', '\n']).to_string()
 }
 
 fn main() {
@@ -23,21 +43,21 @@ fn main() {
                 usage();
                 std::process::exit(2);
             }
-            let secret = if args.len() == 5 && args[4] != "--from-env" {
-                if env::var("VAS_ALLOW_INSECURE_KEYRING_ARG").ok().as_deref() == Some("1") {
-                    args[4].clone()
-                } else {
-                    eprintln!("keyring_set_failed:insecure_cli_secret_disallowed");
-                    std::process::exit(2);
-                }
-            } else {
-                match env::var("VAS_KEYRING_SECRET") {
-                    Ok(v) => v,
-                    Err(_) => {
-                        eprintln!("keyring_set_failed:missing_secret");
-                        std::process::exit(2);
+            let secret = if args.len() == 5 {
+                match args[4].as_str() {
+                    "--from-env" => secret_from_env(),
+                    "--from-stdin" => secret_from_stdin(),
+                    _ => {
+                        if env::var("VAS_ALLOW_INSECURE_KEYRING_ARG").ok().as_deref() == Some("1") {
+                            args[4].clone()
+                        } else {
+                            eprintln!("keyring_set_failed:insecure_cli_secret_disallowed");
+                            std::process::exit(2);
+                        }
                     }
                 }
+            } else {
+                secret_from_env()
             };
             if secret.is_empty() {
                 eprintln!("keyring_set_failed:empty_secret");

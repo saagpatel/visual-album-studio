@@ -1,0 +1,29 @@
+name: security-ownership-map-cadence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 17 * * 1" # weekly Monday 17:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  export-ownership-map:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Export security ownership map artifact
+        run: bash scripts/ops/export_security_ownership_map.sh
+
+      - name: Upload ownership map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-ownership-map
+          path: |
+            out/logs/security/security_ownership_map.md
+            out/logs/security/security_ownership_map.json
+          if-no-files-found: error
