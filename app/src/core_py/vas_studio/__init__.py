@@ -31,7 +31,7 @@ from .mapping import MappingContext, MappingService
 from .mixer import MixerService
 from .modes import LANDSCAPE_PRESETS, PARTICLE_PRESETS, PHOTO_PRESETS, ModePreset
 from .modes_v2 import NEXT_GEN_PRESETS, ModePresetV2
-from .model_registry_v2 import ModelProvenanceRecordV1, ModelRegistryServiceV2
+from .model_registry_v2 import HardwareProfileV1, ModelProvenanceRecordV1, ModelRegistryServiceV2
 from .phase1 import Phase1Runtime
 from .photo_animator import ModelManager, PhotoAnimator
 from .productization import (
@@ -59,6 +59,7 @@ __all__ = [
     "InstagramDistributionAdapter",
     "ExportService",
     "FFmpegAdapter",
+    "HardwareProfileV1",
     "InMemoryCloudSyncAdapter",
     "LocalObjectStorageAdapter",
     "JobState",

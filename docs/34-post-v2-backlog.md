@@ -6,6 +6,28 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
 - `docs/20-phase-blueprint-v2.md`
 - Train 3/4 execution notes and closeout follow-ups
 
+## Execution status
+- `PV2-001`: in progress (execution started 2026-03-01)
+  - initial slice delivered:
+    - hardware profile contract (`HardwareProfileV1`)
+    - adaptive model recommendation logic in `ModelRegistryServiceV2`
+    - auto-selection fallback path in `PhotoAnimator`
+    - tests:
+      - `app/tests_py/unit/test_tspv2_001_hardware_profile_selection.py`
+      - `app/tests_py/integration/test_itpv2_001_adaptive_model_selection.py`
+  - stacked slice delivered:
+    - benchmark telemetry persistence (`model_hw_benchmarks`) and selection event history (`model_selection_events`)
+    - benchmark-weighted ranking path for hardware-specific model recommendation
+    - animator-level selection/fallback event logging through registry hooks
+    - migration:
+      - `migrations/012_postv2_model_selection_telemetry.sql`
+  - stacked slice delivered:
+    - installation-aware recommendation filter now excludes models with missing local artifacts (`installed=false`)
+    - auto-selection telemetry now records final outcome after model-path resolution (`selected` vs `fallback`)
+    - added regression for missing-model drift to ensure fallback + telemetry accuracy:
+      - `app/tests_py/integration/test_itpv2_001_adaptive_model_selection.py::test_itpv2_001_missing_model_file_forces_fallback_event`
+- Remaining backlog items are not started.
+
 ## Rendering and ML enhancements
 | Item | Description | Reason deferred | Priority | Suggested phase/quarter | Dependency notes |
 |---|---|---|---|---|---|

@@ -256,6 +256,26 @@
 - Completion statement:
   - V2 scope (`RQ-V2-001..505`, `AT-V2-000/101/201/301/401/501`) is complete; release closeout SHA is tagged and post-closeout docs stamp remains fully green with no active waivers.
 
+## Post-V2 Backlog Execution (2026-03-01)
+- Backlog execution has started with `PV2-001` (adaptive model auto-selection by hardware profile).
+- Initial implementation slice:
+  - `HardwareProfileV1` contract and profile classification in `ModelRegistryServiceV2`
+  - compatibility-aware recommendation API: `recommend_model_for_hardware(...)`
+  - animator auto-selection + fallback path: `PhotoAnimator.resolve_auto_model_or_fallback(...)`
+- Initial validation suites:
+  - `app/tests_py/unit/test_tspv2_001_hardware_profile_selection.py`
+  - `app/tests_py/integration/test_itpv2_001_adaptive_model_selection.py`
+- Stacked slice (telemetry-aware ranking):
+  - benchmark telemetry table: `model_hw_benchmarks`
+  - selection history table: `model_selection_events`
+  - migration: `migrations/012_postv2_model_selection_telemetry.sql`
+  - benchmark-weighted recommendation and selection/fallback event logging now active in model auto-selection path
+- Stacked slice (selection hardening):
+  - recommendations now require local model artifact presence (`installed=true`) before candidate is considered compatible
+  - selection-event telemetry is now recorded after path resolution to prevent false `selected` records during fallback
+  - added regression coverage for registry/filesystem drift:
+    - `app/tests_py/integration/test_itpv2_001_adaptive_model_selection.py::test_itpv2_001_missing_model_file_forces_fallback_event`
+
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
