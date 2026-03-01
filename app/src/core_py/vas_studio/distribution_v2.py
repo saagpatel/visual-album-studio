@@ -176,12 +176,93 @@ class InstagramDistributionAdapter(DistributionAdapter):
         return ProviderPublishStatusV1(self.provider, True, "succeeded", publish_id=publish_id, http_status=200)
 
 
+class FacebookReelsDistributionAdapter(DistributionAdapter):
+    provider = "facebook_reels"
+
+    def preflight(self, request: ProviderPublishRequestV1) -> ProviderPublishStatusV1:
+        if len(request.title.strip()) == 0:
+            return ProviderPublishStatusV1(
+                self.provider, False, "failed", error_code="E_FB_REELS_TITLE_REQUIRED", retryable=False, http_status=400
+            )
+        quota = ProviderPolicyPreflight.check_quota(request, estimated_units=140)
+        if not quota.ok:
+            return quota
+        if bool(request.metadata.get("simulate_policy_block", False)):
+            return ProviderPublishStatusV1(
+                self.provider,
+                False,
+                "failed",
+                error_code="E_FB_REELS_POLICY_BLOCKED",
+                retryable=False,
+                http_status=403,
+            )
+        return ProviderPublishStatusV1(self.provider, True, "preflight_ok", details=quota.details)
+
+    def publish(self, request: ProviderPublishRequestV1) -> ProviderPublishStatusV1:
+        preflight = self.preflight(request)
+        if not preflight.ok:
+            return preflight
+        if bool(request.metadata.get("simulate_retryable", False)):
+            return ProviderPublishStatusV1(
+                self.provider,
+                False,
+                "failed",
+                error_code="E_FB_REELS_TRANSIENT",
+                retryable=True,
+                http_status=503,
+            )
+        publish_id = "fr_" + hashlib.sha256((request.file_path + request.channel_profile_id).encode("utf-8")).hexdigest()[:12]
+        return ProviderPublishStatusV1(self.provider, True, "succeeded", publish_id=publish_id, http_status=200)
+
+
+class XDistributionAdapter(DistributionAdapter):
+    provider = "x"
+
+    def preflight(self, request: ProviderPublishRequestV1) -> ProviderPublishStatusV1:
+        char_count = len(request.title.strip()) + len(request.description.strip())
+        if char_count == 0:
+            return ProviderPublishStatusV1(self.provider, False, "failed", error_code="E_X_TEXT_REQUIRED", retryable=False, http_status=400)
+        if char_count > 280:
+            return ProviderPublishStatusV1(self.provider, False, "failed", error_code="E_X_TEXT_TOO_LONG", retryable=False, http_status=400)
+        quota = ProviderPolicyPreflight.check_quota(request, estimated_units=110)
+        if not quota.ok:
+            return quota
+        if bool(request.metadata.get("simulate_policy_block", False)):
+            return ProviderPublishStatusV1(
+                self.provider,
+                False,
+                "failed",
+                error_code="E_X_POLICY_BLOCKED",
+                retryable=False,
+                http_status=403,
+            )
+        return ProviderPublishStatusV1(self.provider, True, "preflight_ok", details=quota.details)
+
+    def publish(self, request: ProviderPublishRequestV1) -> ProviderPublishStatusV1:
+        preflight = self.preflight(request)
+        if not preflight.ok:
+            return preflight
+        if bool(request.metadata.get("simulate_retryable", False)):
+            return ProviderPublishStatusV1(
+                self.provider,
+                False,
+                "failed",
+                error_code="E_X_TRANSIENT",
+                retryable=True,
+                http_status=503,
+            )
+        publish_id = "x_" + hashlib.sha256((request.file_path + request.title + request.description).encode("utf-8")).hexdigest()[:12]
+        return ProviderPublishStatusV1(self.provider, True, "succeeded", publish_id=publish_id, http_status=200)
+
+
 class DistributionServiceV2:
     def __init__(self, db=None):
         self.db = db
         self.adapters: dict[str, DistributionAdapter] = {
             "tiktok": TikTokDistributionAdapter(),
             "instagram": InstagramDistributionAdapter(),
+            "facebook_reels": FacebookReelsDistributionAdapter(),
+            "x": XDistributionAdapter(),
         }
 
     def register_adapter(self, adapter: DistributionAdapter) -> None:
@@ -208,7 +289,7 @@ class DistributionServiceV2:
         else:
             result = adapter.publish(request)
 
-        if self.db and request.provider in {"youtube", "tiktok", "instagram"}:
+        if self.db and request.provider in {"youtube", "tiktok", "instagram", "facebook_reels", "x"}:
             now = int(time.time())
             job_id = new_id("dist_job")
             self.db.execute(

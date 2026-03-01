@@ -57,7 +57,19 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
     - operations runbook section:
       - `docs/39-postv2-ops-runbook.md`
 - Remaining backlog items are not started in implementation code:
-  - `PV2-002`, `PV2-101`, `PV2-102`, `PV2-201`, `PV2-202`
+  - `PV2-002`, `PV2-102`, `PV2-201`, `PV2-202`
+- `PV2-101`: complete (wave 2 closure on 2026-03-01)
+  - provider adapters added:
+    - `facebook_reels`
+    - `x`
+  - migration added for expanded provider constraints:
+    - `migrations/013_postv2_distribution_provider_expansion.sql`
+  - closure test/evidence suites:
+    - `app/tests_py/integration/test_itpv2_101_facebook_reels_publish_flow.py`
+    - `app/tests_py/integration/test_itpv2_101_x_publish_flow.py`
+    - `app/tests_py/integration/test_itpv2_101_provider_policy_redaction.py`
+    - `app/tests_py/acceptance/test_atpv2_101_provider_expansion.py`
+    - `scripts/test/acceptance_pv2_101.sh`
 
 ## Rendering and ML enhancements
 | Item | Description | Reason deferred | Priority | Suggested phase/quarter | Dependency notes |

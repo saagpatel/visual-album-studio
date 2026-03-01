@@ -36,6 +36,10 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
+- Post-V2 Wave 2 (`PV2-101`) closure update:
+  - new provider lanes delivered for Facebook Reels and X with quota/policy controls.
+  - provider constraint migration added (`migrations/013_postv2_distribution_provider_expansion.sql`).
+  - Wave 2 gates passed: `acceptance_pv2_101`, strict verify, strict capstone (`live_closeout=pass`).
 - Post-V2 Wave 1 (`PV2-001`) closure update:
   - adaptive model-selection drift guard added (missing/checksum mismatch detection).
   - evaluation auto-ingestion now records hardware benchmark telemetry for selection.

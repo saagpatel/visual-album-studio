@@ -16,11 +16,13 @@ from .db import Db, MigrationRunner
 from .distribution_v2 import (
     DistributionAdapter,
     DistributionServiceV2,
+    FacebookReelsDistributionAdapter,
     InstagramDistributionAdapter,
     ProviderPolicyPreflight,
     ProviderPublishRequestV1,
     ProviderPublishStatusV1,
     TikTokDistributionAdapter,
+    XDistributionAdapter,
     make_request,
 )
 from .errors import VasError
@@ -63,6 +65,7 @@ __all__ = [
     "Db",
     "DistributionAdapter",
     "DistributionServiceV2",
+    "FacebookReelsDistributionAdapter",
     "InstagramDistributionAdapter",
     "ExportService",
     "FFmpegAdapter",
@@ -105,6 +108,7 @@ __all__ = [
     "SyncEnvelopeV1",
     "DiagnosticsBundleInfo",
     "TikTokDistributionAdapter",
+    "XDistributionAdapter",
     "UploadSession",
     "UxPlatformService",
     "UxTokenSet",

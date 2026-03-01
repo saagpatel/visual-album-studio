@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 and V2 closeout are complete on `main`; Post-V2 Wave 0 is complete and Wave 1 (`PV2-001`) is complete with acceptance and strict-gate evidence.
+**Current state:** V1 and V2 closeout are complete on `main`; Post-V2 Wave 0, Wave 1 (`PV2-001`), and Wave 2 (`PV2-101`) are complete with acceptance and strict-gate evidence.
 **Last updated:** 2026-03-01
 
 ## Post-V2 Wave 0 Control-Plane Kickoff (2026-03-01)
@@ -54,6 +54,29 @@
   - `capstone_finished=2026-03-01T17:43:33Z`
 - Evidence pointers:
   - `out/logs/acceptance_pv2_001.log`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
+
+## Post-V2 Wave 2 Closure - PV2-101 (2026-03-01)
+- Scope closed:
+  - provider expansion for `facebook_reels` and `x` via `DistributionAdapter` contract
+  - provider policy/quota/error taxonomy extensions and diagnostics redaction coverage
+  - forward migration for provider CHECK constraints (`migrations/013_postv2_distribution_provider_expansion.sql`)
+- Wave 2 artifacts:
+  - `app/tests_py/integration/test_itpv2_101_facebook_reels_publish_flow.py`
+  - `app/tests_py/integration/test_itpv2_101_x_publish_flow.py`
+  - `app/tests_py/integration/test_itpv2_101_provider_policy_redaction.py`
+  - `app/tests_py/acceptance/test_atpv2_101_provider_expansion.py`
+  - `scripts/test/acceptance_pv2_101.sh`
+- Gate evidence:
+  - `bash scripts/test/acceptance_pv2_101.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T17:52:28Z`
+- Evidence pointers:
+  - `out/logs/acceptance_pv2_101.log`
   - `out/logs/capstone_baseline/capstone_summary.txt`
   - `out/logs/capstone_baseline/security_audit_report.txt`
   - `out/logs/capstone_baseline/repo_hygiene_report.txt`
