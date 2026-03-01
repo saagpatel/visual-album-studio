@@ -68,8 +68,10 @@ Progress snapshot (2026-03-01):
 - [x] Train 2 required evidence suites added:
   - `app/tests_py/acceptance/test_atv2201_train2.py`
   - `app/tests_py/unit/test_tsv2_201_mode_contracts.py`
+  - `app/tests_py/unit/test_tsv2_203_model_eval_harness.py`
   - `app/tests_py/integration/test_itv2_202_model_registry_provenance.py`
   - `app/tests_py/integration/test_itv2_203_model_fallback_behavior.py`
+  - `app/tests_py/integration/test_itv2_204_model_eval_harness.py`
 - [x] Verification snapshot on branch `codex/v2-m2-mode-model-slice-20260301`:
   - `bash scripts/test/acceptance_v2_train2.sh` => pass
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass

@@ -214,3 +214,12 @@ class ModelRegistryServiceV2:
         )
         self.db.commit()
         return {"ok": True, "id": eval_id}
+
+    @staticmethod
+    def score_candidate(*, quality_score: float, perf_fps: float, safety_score: float) -> float:
+        quality = max(0.0, min(1.0, float(quality_score)))
+        safety = max(0.0, min(1.0, float(safety_score)))
+        perf = max(0.0, float(perf_fps))
+        # Weighted toward safety/reproducibility, then quality, with bounded perf contribution.
+        perf_component = min(perf / 120.0, 1.0)
+        return round((safety * 0.45) + (quality * 0.4) + (perf_component * 0.15), 6)
