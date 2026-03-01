@@ -2,7 +2,7 @@ use keyring::Entry;
 use std::env;
 
 fn usage() {
-    eprintln!("usage: vas_keyring <set|get|delete> <service> <account> [secret]");
+    eprintln!("usage: vas_keyring <set|get|delete> <service> <account> [--from-env]");
 }
 
 fn main() {
@@ -24,7 +24,12 @@ fn main() {
                 std::process::exit(2);
             }
             let secret = if args.len() == 5 && args[4] != "--from-env" {
-                args[4].clone()
+                if env::var("VAS_ALLOW_INSECURE_KEYRING_ARG").ok().as_deref() == Some("1") {
+                    args[4].clone()
+                } else {
+                    eprintln!("keyring_set_failed:insecure_cli_secret_disallowed");
+                    std::process::exit(2);
+                }
             } else {
                 match env::var("VAS_KEYRING_SECRET") {
                     Ok(v) => v,

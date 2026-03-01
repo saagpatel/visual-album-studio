@@ -131,11 +131,13 @@ def _keyring_roundtrip() -> CheckResult:
     account = f"phase5-{dt.datetime.now(dt.UTC).strftime('%Y%m%d%H%M%S')}"
     secret = base64.urlsafe_b64encode(os.urandom(24)).decode("utf-8")
 
-    set_cmd = [str(helper), "set", service, account, secret]
+    set_cmd = [str(helper), "set", service, account, "--from-env"]
     get_cmd = [str(helper), "get", service, account]
     del_cmd = [str(helper), "delete", service, account]
 
-    set_proc = subprocess.run(set_cmd, capture_output=True, text=True)
+    env = dict(os.environ)
+    env["VAS_KEYRING_SECRET"] = secret
+    set_proc = subprocess.run(set_cmd, capture_output=True, text=True, env=env)
     if set_proc.returncode != 0:
         return CheckResult("keyring_roundtrip", "skip", f"set unavailable: {set_proc.stderr.strip()[:300]}")
 

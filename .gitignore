@@ -35,6 +35,7 @@ out/tmp/**
 
 # Local secret env files
 scripts/test/live.env
+scripts/test/live.env.generated
 
 # Rust build artifacts
 native/vas_keyring/target/**

@@ -119,7 +119,9 @@ def token_from_payload(payload: Dict[str, Any]) -> str:
     env_token = os.environ.get("VAS_YT_ACCESS_TOKEN", "").strip()
     if env_token:
         return env_token
-    return str(payload.get("access_token", "")).strip()
+    if os.environ.get("VAS_ALLOW_INSECURE_TOKEN_PAYLOAD", "0") == "1":
+        return str(payload.get("access_token", "")).strip()
+    return ""
 
 
 def build_video_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:

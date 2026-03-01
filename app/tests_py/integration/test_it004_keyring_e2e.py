@@ -28,3 +28,22 @@ def test_it004_keyring_roundtrip(repo_root):
 
     del_proc = subprocess.run([str(bin_path), "delete", service, account], capture_output=True, text=True, check=False)
     assert del_proc.returncode == 0
+
+
+def test_it004_keyring_rejects_insecure_cli_secret(repo_root):
+    bin_path = repo_root / "native/vas_keyring/target/debug/vas_keyring"
+    service = "vas-test"
+    account = f"acct-{uuid.uuid4().hex[:8]}"
+    secret = "test-secret"
+    env = dict(os.environ)
+    env.pop("VAS_ALLOW_INSECURE_KEYRING_ARG", None)
+
+    set_proc = subprocess.run(
+        [str(bin_path), "set", service, account, secret],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert set_proc.returncode != 0
+    assert "insecure_cli_secret_disallowed" in set_proc.stderr

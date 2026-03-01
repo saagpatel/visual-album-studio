@@ -55,6 +55,12 @@
 - Validation:
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass.
 
+## Security Hardening Cycle (2026-03-01)
+- Hardening backlog and remediation sequence published:
+  - `docs/30-security-hardening-backlog.md`
+- Ownership decision for this cycle:
+  - Single security owner retained (`saagar210`), with residual bus-factor risk explicitly accepted.
+
 ## V2 Program Activation Snapshot (2026-03-01)
 - V2 Train 0 foundation artifacts added:
   - `docs/20-phase-blueprint-v2.md`

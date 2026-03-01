@@ -69,3 +69,17 @@ def test_it013_attach_playlists_input_guard(repo_root: Path):
     )
     assert result["ok"] is False
     assert result["error_code"] == "E_YT_PLAYLIST_INPUT_INVALID"
+
+
+def test_it013_payload_token_disallowed_by_default(repo_root: Path):
+    result = _run(
+        repo_root,
+        "start_resumable_upload",
+        {
+            "access_token": "x",
+            "file_path": str(repo_root / "out" / "missing-video.mp4"),
+            "metadata": {},
+        },
+    )
+    assert result["ok"] is False
+    assert result["error_code"] == "E_YT_AUTH_REQUIRED"
