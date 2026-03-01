@@ -6,6 +6,10 @@ Status reference:
 - Baseline hardening and gate integrity are tracked in `docs/STATUS.md`.
 - Risk context is tracked in `docs/19-risk-register.md`.
 - Acceptance contracts are defined in `docs/phases/phase-04.md`, `docs/phases/phase-05.md`, and `docs/phases/phase-06.md`.
+- Closeout constants:
+  - `CLOSEOUT_DATE_UTC=2026-03-01`
+  - `CLOSEOUT_EVIDENCE_SHA=b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+  - `CLOSEOUT_TARGET_TAG=closeout-2026-03-01`
 
 ## Phase 4 (Automation: Batch + Remix + Guardrails)
 
@@ -89,3 +93,26 @@ Provide quota-aware, privacy-safe analytics/revenue features that degrade gracef
 3. Is live closeout passing from capstone on the current candidate SHA?
 4. Are all required AT gates (`AT-004`, `AT-005`, `AT-006`) green on product paths?
 5. Are remaining open risks only Low/accepted with owners and dates?
+
+## Final PM Go/No-Go Decision (2026-03-01)
+
+Candidate evaluated: `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+
+Decision: **GO-COMPLETE**
+
+Checklist outcomes:
+1. Pinned-toolchain CI smoke checks active and green?
+   - **Yes**
+   - Evidence: `docs/STATUS.md` (Phase Evidence + Pinned toolchain verification), `.github/workflows/quality-gates.yml`
+2. Strict security scans green with no active temporary waivers?
+   - **Yes**
+   - Evidence: `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` pass, `docs/security-waivers.json` empty
+3. Live closeout passing from capstone on candidate SHA?
+   - **Yes**
+   - Evidence: `out/logs/capstone_baseline/capstone_summary.txt` with `result[live_closeout]=pass`, capstone finish `2026-03-01T06:08:31Z`
+4. Required AT gates (`AT-004`, `AT-005`, `AT-006`) green on product paths?
+   - **Yes**
+   - Evidence: capstone summary includes `result[acceptance_phase_04]=pass`, `result[acceptance_phase_05]=pass`, `result[acceptance_phase_06]=pass`
+5. Remaining open risks only Low/accepted with owners and dates?
+   - **Yes**
+   - Evidence: owners remain assigned in `docs/19-risk-register.md`; residual-risk acceptance captured in `docs/22-project-closeout-report.md`

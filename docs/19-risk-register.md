@@ -36,8 +36,12 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
+- Closeout context constants:
+  - `CLOSEOUT_DATE_UTC=2026-03-01`
+  - `CLOSEOUT_EVIDENCE_SHA=b7a69ebf548e4407c9dc59275687f0944e5f8ce8`
+  - `CLOSEOUT_TARGET_TAG=closeout-2026-03-01`
 - Phase 0 closure:
-  - hardening baseline synchronized to `main` at `f969b2a2a1ef87ac5e3c03926ca10dc7c88a4b46`, removing branch/docs truth drift for release tracking.
+  - hardening baseline synchronized to closeout evidence SHA `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`, removing branch/docs truth drift for release tracking.
 - RSK-009 mitigation strengthened:
   - `scripts/bootstrap.sh` now enforces checksum-field validity in `tools/ffmpeg/checksums.json` and verifies managed FFmpeg binary checksums when present.
 - RSK-011/RSK-014 mitigation strengthened:
@@ -62,3 +66,7 @@ Scales:
   - Latest live closeout now reports zero skips:
     - Phase 5: resumable upload interruption/resume passed using fixture evidence.
     - Phase 6: revenue API 403 handled as policy-compliant fallback pass with `AT-006` fallback verification.
+- Final closeout acceptance update:
+  - strict verification + strict capstone reruns passed on `b7a69ebf548e4407c9dc59275687f0944e5f8ce8`.
+  - `docs/security-waivers.json` remains empty (no temporary waivers active).
+  - residual risks are accepted with owners/modules and periodic review in `docs/22-project-closeout-report.md`.
