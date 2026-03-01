@@ -34,6 +34,10 @@ Priority: Must
 Priority: Must
 - Release flow must define signed artifacts, provenance attestations, and verification steps.
 
+### RQ-V2-006 — Cloud region and residency baseline must be explicit
+Priority: Must
+- V2 cloud baseline must declare initial Supabase region and residency constraints before Train 4 implementation.
+
 ## Train 1 — 4K and Packaging
 
 ### RQ-V2-101 — 4K export lane must be deterministic within defined boundary

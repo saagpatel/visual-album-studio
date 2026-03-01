@@ -22,6 +22,12 @@
 - V2 Train 0 governance check wired into CI:
   - `scripts/ci/v2_train0_gate.sh`
   - `.github/workflows/quality-gates.yml`
+- Branch/ruleset enforcement status:
+  - GitHub branch protection/rulesets API is unavailable on current private-repo tier (HTTP 403 feature gate).
+  - Fallback controls enabled:
+    - `.codex/scripts/install-prepush-guard.sh`
+    - `.git/hooks/pre-push` strict verify enforcement
+    - `scripts/ops/configure_github_branch_protection.sh` (best-effort API configurator with tier-aware fallback)
 - Program state:
   - v1 closeout remains complete and immutable under tag `closeout-2026-03-01`.
   - V2 is now active at Train 0 with governance/specification lane established.
@@ -276,3 +282,4 @@
 - ASM-203: No new product requirements are introduced beyond `docs/**`.
 - ASM-204: Continuous execution proceeds phase-by-phase, with blocker-aware parallelization inside phase boundaries only.
 - ASM-205: Strict security mode in CI permits only explicit time-boxed waivers documented in `docs/security-waivers.json`.
+- ASM-206: V2 cloud baseline region/residency defaults to Supabase `us-west-1` with United States residency (`docs/28-v2-cloud-region-and-residency.md`).

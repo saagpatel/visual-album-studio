@@ -6,6 +6,7 @@ required_files=(
   "docs/03-requirements-v2.md"
   "docs/18-traceability-matrix-v2.md"
   "docs/25-ui-ux-standards-v2.md"
+  "docs/28-v2-cloud-region-and-residency.md"
   "docs/adr/0001-v2-cloud-sync-architecture.md"
   "docs/adr/0002-v2-conflict-resolution-model.md"
   ".github/CODEOWNERS"

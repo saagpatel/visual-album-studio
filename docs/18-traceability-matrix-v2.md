@@ -15,6 +15,7 @@ Legend:
 | RQ-V2-003 | ADR-backed cloud/conflict decisions | Train 0 | AT-V2-000 |
 | RQ-V2-004 | UI quality baseline contracts | Train 0 | TS-V2-010, AT-V2-000 |
 | RQ-V2-005 | Provenance/release integrity definition | Train 0 | IT-V2-002, AT-V2-000 |
+| RQ-V2-006 | Cloud region/residency baseline | Train 0 | AT-V2-000 |
 | RQ-V2-101 | 4K determinism lane | Train 1 | TS-V2-101, AT-V2-101 |
 | RQ-V2-102 | 4K long-run resume reliability | Train 1 | IT-V2-101, RT-V2-101, AT-V2-101 |
 | RQ-V2-103 | Signed artifact production | Train 1 | IT-V2-102, AT-V2-101 |

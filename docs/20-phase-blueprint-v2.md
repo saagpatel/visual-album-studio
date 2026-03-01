@@ -35,6 +35,7 @@ The following must stay green for every V2 release candidate:
   - `docs/18-traceability-matrix-v2.md`
   - `docs/20-phase-blueprint-v2.md`
   - `docs/25-ui-ux-standards-v2.md`
+  - `docs/28-v2-cloud-region-and-residency.md`
   - ADRs for cloud sync + conflict resolution
   - CI workflows for code scanning, dependency review, provenance controls
 
