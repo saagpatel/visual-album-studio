@@ -45,3 +45,7 @@ Additional gate assertions:
 
 ## Final Signoff Statement
 Visual Album Studio project scope defined by Phases 1-7, RQ-001..RQ-066, and associated AT/IT/TS contracts is complete at closeout evidence SHA `f608c203520d00b8b0a33946a502ba8cfdfe8991`. Merge to `main` and release checkpoint tag publication are complete (`closeout-2026-03-01`).
+
+Post-closeout residual-risk monitoring is scheduled via:
+- `.github/workflows/risk-revalidation-cadence.yml`
+- `docs/24-risk-revalidation-cadence.md`

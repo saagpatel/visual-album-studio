@@ -72,3 +72,12 @@ Scales:
   - release checkpoint tag `closeout-2026-03-01` published on GitHub.
   - `docs/security-waivers.json` remains empty (no temporary waivers active).
   - residual risks are accepted with owners/modules and periodic review in `docs/22-project-closeout-report.md`.
+
+## Operational Revalidation Cadence
+- Recurring cadence is now scheduled and documented:
+  - Workflow automation: `.github/workflows/risk-revalidation-cadence.yml`
+  - Cadence policy: `docs/24-risk-revalidation-cadence.md`
+- Cadence lanes:
+  - Weekly (Monday 16:00 UTC): `RSK-013`
+  - Monthly (day 1, 16:00 UTC): `RSK-006`, `RSK-012`, `RSK-018`, `RSK-024`
+  - Release-train manual trigger: `RSK-024`

@@ -1,0 +1,80 @@
+name: risk-revalidation-cadence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 16 * * 1"   # weekly Monday at 16:00 UTC
+    - cron: "0 16 1 * *"   # monthly on day 1 at 16:00 UTC
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open-revalidation-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open cadence issue
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const schedule = context.payload.schedule || "manual";
+            const today = new Date().toISOString().slice(0, 10);
+
+            let cadence = "manual";
+            let riskIds = ["RSK-006", "RSK-012", "RSK-013", "RSK-018", "RSK-024"];
+            let focus = "Full residual-risk sweep";
+
+            if (schedule === "0 16 * * 1") {
+              cadence = "weekly";
+              riskIds = ["RSK-013"];
+              focus = "Quota-sensitive publishing behavior";
+            } else if (schedule === "0 16 1 * *") {
+              cadence = "monthly";
+              riskIds = ["RSK-006", "RSK-012", "RSK-018", "RSK-024"];
+              focus = "Policy/compliance and release-readiness residual risks";
+            }
+
+            const title = `[Risk Revalidation] ${cadence} ${today}`;
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            if (existing.data.some((issue) => issue.title === title)) {
+              core.info(`Issue already open: ${title}`);
+              return;
+            }
+
+            const checklist = riskIds.map((riskId) => `- [ ] Revalidate ${riskId} controls and evidence`).join("\n");
+
+            const body = [
+              "## Residual Risk Revalidation",
+              "",
+              `Cadence: **${cadence}**`,
+              `Date (UTC): **${today}**`,
+              `Focus: **${focus}**`,
+              "",
+              "### Scope",
+              checklist,
+              "",
+              "### Required checks",
+              "- [ ] Confirm strict verification remains green (`env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`).",
+              "- [ ] Confirm capstone/live-closeout evidence status from latest `out/logs/capstone_baseline/capstone_summary.txt`.",
+              "- [ ] Confirm `docs/security-waivers.json` has no active temporary waivers (or document owner+expiry if exceptional waiver is needed).",
+              "",
+              "### References",
+              "- `docs/19-risk-register.md`",
+              "- `docs/22-project-closeout-report.md`",
+              "- `docs/24-risk-revalidation-cadence.md`",
+            ].join("\n");
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
