@@ -36,10 +36,14 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
-- Next-cycle kickoff update:
-  - next-cycle control-plane and issue board are active (`#29..#37`).
-  - first P1 slice (`NC-003`) delivered with policy diff/changelog ingestion and recommendation output.
-  - kickoff gate pass: `acceptance_nc_003`, strict verify, strict capstone (`result[live_closeout]=pass`, `capstone_finished=2026-03-01T18:39:03Z`).
+- Next-cycle closure update:
+  - next-cycle issue board `#29..#37` is fully delivered (`NC-001..NC-003`, `NC-101..NC-103`, `NC-201..NC-203`).
+  - closure gates passed:
+    - `acceptance_nc_001`, `acceptance_nc_002`, `acceptance_nc_003`
+    - `acceptance_nc_101`, `acceptance_nc_102`, `acceptance_nc_103`
+    - `acceptance_nc_201`, `acceptance_nc_202`, `acceptance_nc_203`
+    - strict verify, strict capstone
+  - capstone marker: `capstone_finished=2026-03-01T18:56:40Z`, `result[live_closeout]=pass`.
 - Post-V2 Waves 3-6 closure update:
   - `PV2-102` scheduling optimization delivered with quota/backoff/blackout controls.
   - `PV2-002` preset exchange delivered with schema/signature/permission enforcement.

@@ -54,3 +54,30 @@ This document captures optional next-cycle ideas after completion of Post-V2 bac
     - `app/tests_py/unit/test_tsnc_003_provider_policy_diff.py`
     - `app/tests_py/integration/test_itnc_003_provider_policy_changelog.py`
     - `app/tests_py/acceptance/test_atnc_003_provider_policy_diff_watcher.py`
+
+## Next-Cycle Closure Snapshot (2026-03-01)
+- Remaining next-cycle backlog items completed in this execution wave:
+  - `NC-001`, `NC-002`, `NC-101`, `NC-102`, `NC-103`, `NC-201`, `NC-202`, `NC-203`
+- Delivered implementation surfaces:
+  - `DRRehearsalRunnerV1`
+  - `AnomalyTriageServiceV1`
+  - `PresetTrustUiServiceV1`
+  - `SchedulerSimulationDashboardV1`
+  - `CollaborationTimelineServiceV1`
+  - `ProviderFeatureFlagsV1` with `DistributionServiceV2` enforcement
+  - `ResidencyPolicyTemplateServiceV1`
+  - `AuditDashboardExportServiceV1`
+- Gate evidence:
+  - `bash scripts/test/acceptance_nc_001.sh` => pass
+  - `bash scripts/test/acceptance_nc_002.sh` => pass
+  - `bash scripts/test/acceptance_nc_003.sh` => pass
+  - `bash scripts/test/acceptance_nc_101.sh` => pass
+  - `bash scripts/test/acceptance_nc_102.sh` => pass
+  - `bash scripts/test/acceptance_nc_103.sh` => pass
+  - `bash scripts/test/acceptance_nc_201.sh` => pass
+  - `bash scripts/test/acceptance_nc_202.sh` => pass
+  - `bash scripts/test/acceptance_nc_203.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T18:56:40Z`

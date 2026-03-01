@@ -256,8 +256,9 @@ class XDistributionAdapter(DistributionAdapter):
 
 
 class DistributionServiceV2:
-    def __init__(self, db=None):
+    def __init__(self, db=None, *, feature_flags=None):
         self.db = db
+        self.feature_flags = feature_flags
         self.adapters: dict[str, DistributionAdapter] = {
             "tiktok": TikTokDistributionAdapter(),
             "instagram": InstagramDistributionAdapter(),
@@ -271,7 +272,23 @@ class DistributionServiceV2:
     def _adapter(self, provider: str) -> DistributionAdapter | None:
         return self.adapters.get(provider)
 
+    def _provider_enabled(self, provider: str) -> bool:
+        if self.feature_flags is None:
+            return True
+        if not hasattr(self.feature_flags, "is_enabled"):
+            return True
+        return bool(self.feature_flags.is_enabled(provider))
+
     def preflight_publish(self, request: ProviderPublishRequestV1) -> dict[str, Any]:
+        if not self._provider_enabled(request.provider):
+            return ProviderPublishStatusV1(
+                request.provider,
+                False,
+                "failed",
+                error_code="E_PROVIDER_FEATURE_DISABLED",
+                retryable=False,
+                http_status=423,
+            ).to_dict()
         adapter = self._adapter(request.provider)
         if adapter is None:
             return ProviderPublishStatusV1(
@@ -281,6 +298,16 @@ class DistributionServiceV2:
         return result.to_dict()
 
     def publish(self, request: ProviderPublishRequestV1) -> dict[str, Any]:
+        if not self._provider_enabled(request.provider):
+            result = ProviderPublishStatusV1(
+                request.provider,
+                False,
+                "failed",
+                error_code="E_PROVIDER_FEATURE_DISABLED",
+                retryable=False,
+                http_status=423,
+            )
+            return result.to_dict()
         adapter = self._adapter(request.provider)
         if adapter is None:
             result = ProviderPublishStatusV1(

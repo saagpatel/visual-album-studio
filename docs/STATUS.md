@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 and V2 closeout are complete on `main`; all Post-V2 backlog waves are complete and Next-cycle execution is active with control-plane docs published and first P1 slice (`NC-003`) delivered.
+**Current state:** V1 and V2 closeout are complete on `main`; all Post-V2 backlog waves and all next-cycle items (`NC-001..NC-003`, `NC-101..NC-103`, `NC-201..NC-203`) are delivered with strict verification and capstone evidence green.
 **Last updated:** 2026-03-01
 
 ## Next-Cycle Kickoff (2026-03-01)
@@ -38,6 +38,54 @@
   - `capstone_finished=2026-03-01T18:39:03Z`
 - Evidence pointers:
   - `out/logs/acceptance_nc_003.log`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
+
+## Next-Cycle Remaining Items Closure (2026-03-01)
+- Scope closed:
+  - `NC-001` DR rehearsal automation
+  - `NC-002` anomaly auto-triage enrichment
+  - `NC-101` preset trust and verification UI state handling
+  - `NC-102` scheduler simulation dashboard overlays
+  - `NC-103` collaboration replay/conflict timeline
+  - `NC-201` provider feature-flag gating
+  - `NC-202` residency policy templates
+  - `NC-203` audit dashboard export bundles
+- Core implementation artifacts:
+  - `migrations/016_nextcycle_remaining_items.sql`
+  - `app/src/core_py/vas_studio/dr_rehearsal_v1.py`
+  - `app/src/core_py/vas_studio/anomaly_triage_v1.py`
+  - `app/src/core_py/vas_studio/preset_trust_ui_v1.py`
+  - `app/src/core_py/vas_studio/scheduler_dashboard_v1.py`
+  - `app/src/core_py/vas_studio/collaboration_timeline_v1.py`
+  - `app/src/core_py/vas_studio/provider_feature_flags_v1.py`
+  - `app/src/core_py/vas_studio/residency_templates_v1.py`
+  - `app/src/core_py/vas_studio/audit_export_bundle_v1.py`
+- Verification evidence:
+  - `bash scripts/test/acceptance_nc_001.sh` => pass
+  - `bash scripts/test/acceptance_nc_002.sh` => pass
+  - `bash scripts/test/acceptance_nc_003.sh` => pass
+  - `bash scripts/test/acceptance_nc_101.sh` => pass
+  - `bash scripts/test/acceptance_nc_102.sh` => pass
+  - `bash scripts/test/acceptance_nc_103.sh` => pass
+  - `bash scripts/test/acceptance_nc_201.sh` => pass
+  - `bash scripts/test/acceptance_nc_202.sh` => pass
+  - `bash scripts/test/acceptance_nc_203.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T18:56:40Z`
+- Evidence pointers:
+  - `out/logs/acceptance_nc_001.log`
+  - `out/logs/acceptance_nc_002.log`
+  - `out/logs/acceptance_nc_003.log`
+  - `out/logs/acceptance_nc_101.log`
+  - `out/logs/acceptance_nc_102.log`
+  - `out/logs/acceptance_nc_103.log`
+  - `out/logs/acceptance_nc_201.log`
+  - `out/logs/acceptance_nc_202.log`
+  - `out/logs/acceptance_nc_203.log`
   - `out/logs/capstone_baseline/capstone_summary.txt`
   - `out/logs/capstone_baseline/security_audit_report.txt`
   - `out/logs/capstone_baseline/repo_hygiene_report.txt`

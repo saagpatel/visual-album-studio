@@ -27,15 +27,29 @@ Post-V2 control-plane artifacts:
 - `docs/39-postv2-ops-runbook.md`
 
 ## Next-Cycle Execution Board (Kickoff 2026-03-01)
-- `#29` - `NC-001` DR rehearsal runner
-- `#30` - `NC-002` anomaly auto-triage enrichment
+- `#29` - `NC-001` DR rehearsal runner (`completed`)
+- `#30` - `NC-002` anomaly auto-triage enrichment (`completed`)
 - `#31` - `NC-003` provider policy diff watcher (`completed`)
-- `#32` - `NC-101` preset trust/verification UI
-- `#33` - `NC-102` scheduler simulation dashboard
-- `#34` - `NC-103` collaboration timeline visualizer
-- `#35` - `NC-201` provider expansion feature flags
-- `#36` - `NC-202` residency policy templates
-- `#37` - `NC-203` audit dashboard export bundles
+- `#32` - `NC-101` preset trust/verification UI (`completed`)
+- `#33` - `NC-102` scheduler simulation dashboard (`completed`)
+- `#34` - `NC-103` collaboration timeline visualizer (`completed`)
+- `#35` - `NC-201` provider expansion feature flags (`completed`)
+- `#36` - `NC-202` residency policy templates (`completed`)
+- `#37` - `NC-203` audit dashboard export bundles (`completed`)
+
+Next-cycle closure evidence (2026-03-01):
+- `bash scripts/test/acceptance_nc_001.sh`
+- `bash scripts/test/acceptance_nc_002.sh`
+- `bash scripts/test/acceptance_nc_003.sh`
+- `bash scripts/test/acceptance_nc_101.sh`
+- `bash scripts/test/acceptance_nc_102.sh`
+- `bash scripts/test/acceptance_nc_103.sh`
+- `bash scripts/test/acceptance_nc_201.sh`
+- `bash scripts/test/acceptance_nc_202.sh`
+- `bash scripts/test/acceptance_nc_203.sh`
+- `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
+- `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh`
+- capstone marker: `capstone_finished=2026-03-01T18:56:40Z` with `result[live_closeout]=pass`
 
 ## Program Constants
 - Owner: `saagar210`
