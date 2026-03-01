@@ -3,7 +3,7 @@
 ## Scope
 - Source findings: security audit + threat model + ownership map review completed on 2026-03-01.
 - Program constraint: single-owner model retained (`saagar210`) per current operating decision.
-- Canonical branch/SHA at cycle close: `main` / `234e2a619bf71208970e7f548397117e43773073`.
+- Canonical hardening evidence SHA: `234e2a619bf71208970e7f548397117e43773073` (merged to `main` during closeout).
 
 ## Ownership
 - Security owner: `saagar210`

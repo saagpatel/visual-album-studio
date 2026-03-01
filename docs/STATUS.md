@@ -61,7 +61,7 @@
 - Ownership decision for this cycle:
   - Single security owner retained (`saagar210`), with residual bus-factor risk explicitly accepted.
 - Latest hardening revalidation snapshot:
-  - `main` / `234e2a619bf71208970e7f548397117e43773073`
+  - Hardening evidence SHA: `234e2a619bf71208970e7f548397117e43773073`
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
   - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
   - `result[live_closeout]=pass`
