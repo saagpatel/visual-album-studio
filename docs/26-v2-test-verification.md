@@ -51,6 +51,7 @@ Train 1 acceptance contract:
     - `app/tests_py/acceptance/test_atv2201_train2.py`
     - `app/tests_py/unit/test_tsv2_201_mode_contracts.py`
     - `app/tests_py/integration/test_itv2_202_model_registry_provenance.py`
+    - `app/tests_py/integration/test_itv2_203_model_fallback_behavior.py`
 
 ### Train 3
 - `AT-V2-301`: provider expansion

@@ -53,7 +53,7 @@ Exit criteria:
 - [x] strict verify + strict capstone pass
 
 ### M2 - Train 2 Delivery (Months 3-5)
-Status: `pending`
+Status: `in_progress`
 Dependencies: M1
 Tracking issue: `#9`
 Scope: `RQ-V2-201..205`, `PV1-001`, `PV1-002`
@@ -62,6 +62,19 @@ Tasks:
 - [ ] Implement `ModelRegistryServiceV2` (checksum/license/provenance/rollback)
 - [ ] Implement deterministic no-model fallback behavior
 - [ ] Deliver test suites + fixtures for `AT-V2-201`
+Progress snapshot (2026-03-01):
+- [x] Train 2 migration baseline added (`009_v2_train2_rendering_ml.sql`) with `model_registry` provenance/status fields and evaluation tables.
+- [x] Train 2 core scaffolding added (`ModelRegistryServiceV2`, v2 mode presets, mapping namespace contracts, deterministic model fallback path).
+- [x] Train 2 required evidence suites added:
+  - `app/tests_py/acceptance/test_atv2201_train2.py`
+  - `app/tests_py/unit/test_tsv2_201_mode_contracts.py`
+  - `app/tests_py/integration/test_itv2_202_model_registry_provenance.py`
+  - `app/tests_py/integration/test_itv2_203_model_fallback_behavior.py`
+- [x] Verification snapshot on branch `codex/v2-m2-mode-model-slice-20260301`:
+  - `bash scripts/test/acceptance_v2_train2.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass` (`capstone_finished=2026-03-01T14:51:40Z`)
 Exit criteria:
 - [ ] `AT-V2-201` pass
 - [ ] strict verify + strict capstone pass

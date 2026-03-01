@@ -1,6 +1,7 @@
 import ast
 import math
 import operator
+import re
 from dataclasses import dataclass
 from typing import Dict
 
@@ -54,17 +55,38 @@ _UNARY_OPS = {
     ast.USub: operator.neg,
 }
 
+_PARAM_ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
+_ALLOWED_PARAM_PREFIXES = ("mp.", "pt.", "ls.", "ph.", "ng.", "ml.")
+
 
 class MappingService:
+    def validate_param_contract(self, param_ids: list[str]) -> bool:
+        seen = set()
+        for param_id in param_ids:
+            value = str(param_id).strip()
+            if not value:
+                raise VasError("E_PARAM_UNKNOWN", "Empty parameter ID in mapping contract")
+            if not _PARAM_ID_PATTERN.match(value):
+                raise VasError("E_PARAM_UNKNOWN", f"Invalid parameter ID format: {value}")
+            if not any(value.startswith(prefix) for prefix in _ALLOWED_PARAM_PREFIXES):
+                raise VasError("E_PARAM_UNKNOWN", f"Unsupported parameter namespace: {value}")
+            if value in seen:
+                raise VasError("E_PARAM_UNKNOWN", f"Duplicate parameter ID: {value}")
+            seen.add(value)
+        return True
+
     def validate_mapping(self, mapping_dsl: str) -> bool:
+        param_ids: list[str] = []
         for raw in mapping_dsl.splitlines():
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
             if "=" not in line:
                 raise VasError("E_MAPPING_PARSE_ERROR", f"Invalid mapping line: {line}")
-            _, expr = line.split("=", 1)
+            param_id, expr = line.split("=", 1)
+            param_ids.append(param_id.strip())
             self._validate_expr(expr.strip())
+        self.validate_param_contract(param_ids)
         return True
 
     def _parse_and_validate_expr(self, expr: str) -> ast.Expression:
@@ -126,12 +148,15 @@ class MappingService:
         env.update(_ALLOWED_FUNCS)
 
         out: Dict[str, float] = {}
+        param_ids: list[str] = []
         for raw in mapping_dsl.splitlines():
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
             param_id, expr = [p.strip() for p in line.split("=", 1)]
+            param_ids.append(param_id)
             tree = self._parse_and_validate_expr(expr)
             val = self._eval_expr(tree, env)
             out[param_id] = float(val)
+        self.validate_param_contract(param_ids)
         return dict(sorted(out.items(), key=lambda item: item[0]))

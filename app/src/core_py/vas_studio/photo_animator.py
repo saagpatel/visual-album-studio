@@ -35,6 +35,23 @@ class PhotoAnimator:
             )
         return frames
 
+    def resolve_model_or_fallback(self, *, model_id: str, registry=None) -> dict:
+        if not model_id:
+            return {"mode": "tier0", "reason": "E_MODEL_NOT_SPECIFIED", "model_path": None}
+        if registry is None:
+            return {"mode": "tier0", "reason": "E_MODEL_NOT_INSTALLED", "model_path": None}
+
+        model = registry.get_model(model_id) if hasattr(registry, "get_model") else None
+        if not model:
+            return {"mode": "tier0", "reason": "E_MODEL_NOT_INSTALLED", "model_path": None}
+        if str(model.get("status", "candidate")) in {"blocked", "deprecated"}:
+            return {"mode": "tier0", "reason": "E_MODEL_UNAVAILABLE", "model_path": None}
+
+        model_path = registry.resolve_model_path(model_id) if hasattr(registry, "resolve_model_path") else None
+        if model_path is None:
+            return {"mode": "tier0", "reason": "E_MODEL_NOT_INSTALLED", "model_path": None}
+        return {"mode": "model", "reason": "", "model_path": str(model_path)}
+
 
 class ModelManager:
     def __init__(self, models_dir: Path):

@@ -137,6 +137,29 @@
 - Milestone state:
   - `M0` complete, `M1` complete, `M2` next active implementation lane.
 
+## V2 Train 2 Slice 1 (2026-03-01)
+- Active branch:
+  - `codex/v2-m2-mode-model-slice-20260301`
+- Train 2 implementation slice delivered:
+  - `migrations/009_v2_train2_rendering_ml.sql`
+  - `app/src/core_py/vas_studio/model_registry_v2.py`
+  - `app/src/core_py/vas_studio/modes_v2.py`
+  - mapping namespace contract hardening (`app/src/core/mapping_service.gd`, `app/src/core_py/vas_studio/mapping.py`)
+  - deterministic model fallback (`app/src/core_py/vas_studio/photo_animator.py`)
+- Train 2 required test/evidence suites added:
+  - `app/tests_py/acceptance/test_atv2201_train2.py`
+  - `app/tests_py/unit/test_tsv2_201_mode_contracts.py`
+  - `app/tests_py/integration/test_itv2_202_model_registry_provenance.py`
+  - `app/tests_py/integration/test_itv2_203_model_fallback_behavior.py`
+- Verification snapshot on this slice:
+  - `bash scripts/test/acceptance_v2_train2.sh` => pass (`1 passed`)
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T14:51:40Z`
+- Milestone state:
+  - `M2` is in progress; remaining Train 2 work is scoped in issue `#9`.
+
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
 - Authoritative closure is now based on product-path execution through Godot core services (`app/src/core`) and adapters (`app/src/adapters`) as defined in docs.
