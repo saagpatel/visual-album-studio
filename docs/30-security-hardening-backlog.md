@@ -3,7 +3,7 @@
 ## Scope
 - Source findings: security audit + threat model + ownership map review completed on 2026-03-01.
 - Program constraint: single-owner model retained (`saagar210`) per current operating decision.
-- Canonical branch/SHA at cycle close: `main` / `38dac43e96b0e6d7b97dfb7eaabd96e774d03a70`.
+- Canonical branch/SHA at cycle close: `main` / `234e2a619bf71208970e7f548397117e43773073`.
 
 ## Ownership
 - Security owner: `saagar210`
@@ -25,9 +25,13 @@
 - Strict verify command:
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
 - Latest strict verify evidence on closeout SHA:
-  - `head_sha=38dac43e96b0e6d7b97dfb7eaabd96e774d03a70`
-  - `security_audit_started=2026-03-01T13:19:17Z`
+  - `head_sha=234e2a619bf71208970e7f548397117e43773073`
+  - `security_audit_started=2026-03-01T13:33:48Z`
   - `out/logs/capstone_baseline/security_audit_report.txt`
+- Latest strict capstone evidence on closeout SHA:
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T13:38:47Z`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
 - Ownership-map export evidence:
   - `out/logs/security/security_ownership_map.md`
   - `out/logs/security/security_ownership_map.json`
