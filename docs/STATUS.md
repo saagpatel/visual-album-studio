@@ -90,6 +90,23 @@
   - `out/logs/capstone_baseline/security_audit_report.txt`
   - `out/logs/capstone_baseline/repo_hygiene_report.txt`
 
+## Audit Remediation Follow-up (2026-03-01)
+- Scope closed from audit recommendations:
+  - Project-scoped diagnostics enforced in schema + audit/triage/export queries (`migrations/017_connector_diagnostics_project_scope.sql`).
+  - DR rehearsal made non-destructive via residency policy snapshot/restore (`DRRehearsalRunnerV1`).
+  - Replay log envelope metadata persisted; timeline actor filters now apply to replay events.
+  - Audit export `include_raw` now emits redacted payloads only.
+- Regression coverage added/updated:
+  - `test_tspv2_202_audit_aggregate_isolates_by_project`
+  - `test_tsnc_001_rehearsal_restores_previous_policy`
+  - `test_itnc_103_timeline_actor_filter_applies_to_replay`
+  - `test_itnc_203_export_generates_files_and_db_row` (redacted raw + cross-project exclusion)
+- Verification evidence:
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T19:44:56Z`
+
 ## Post-V2 Wave 0 Control-Plane Kickoff (2026-03-01)
 - Baseline at kickoff:
   - branch: `main`

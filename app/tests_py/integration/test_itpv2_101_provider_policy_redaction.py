@@ -39,6 +39,7 @@ def test_itpv2_101_provider_policy_quota_and_redaction(runtime, test_root):
         "facebook_reels",
         {"access_token": "secret-token", "message": "Bearer token", "normal": "safe"},
         severity="warn",
+        project_id="project_itpv2_101",
     )
     row = runtime.db.execute("SELECT payload_json, severity FROM connector_diagnostics WHERE id = ?", (diag_id,)).fetchone()
     payload = json.loads(row["payload_json"])

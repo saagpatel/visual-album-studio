@@ -66,13 +66,17 @@ class CollaborationTimelineServiceV1:
         ).fetchall()
         for row in replay_rows:
             detail = json.loads(row["detail_json"])
+            actor = str(detail.get("actor_id", ""))
+            if actor_id and actor != actor_id:
+                continue
+            result = detail.get("result", {})
             events.append(
                 {
                     "event_id": str(row["id"]),
                     "event_type": "sync_replay",
                     "status": str(row["status"]),
-                    "actor_id": str(detail.get("actor_id", "")),
-                    "operation": str(detail.get("operation", "")),
+                    "actor_id": actor,
+                    "operation": str(detail.get("operation", result.get("operation", ""))),
                     "sequence": int(row["sequence"]),
                     "created_at": int(row["created_at"]),
                     "queue_id": str(row["queue_id"]),

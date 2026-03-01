@@ -58,6 +58,7 @@ def test_atpv2_101_provider_expansion_flow(runtime, test_root):
         "x",
         {"refresh_token": "secret-token", "message": "Bearer token", "normal": "safe"},
         severity="warn",
+        project_id="project_atpv2_101",
     )
     row = runtime.db.execute("SELECT payload_json FROM connector_diagnostics WHERE id = ?", (diag_id,)).fetchone()
     payload = json.loads(row["payload_json"])

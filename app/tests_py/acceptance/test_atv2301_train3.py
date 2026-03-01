@@ -58,6 +58,7 @@ def test_atv2301_train3_provider_flows_quota_policy_and_redaction(runtime, test_
         "instagram",
         {"access_token": "secret-token", "message": "Bearer token", "normal": "safe"},
         severity="warn",
+        project_id="project_atv2301",
     )
     row = runtime.db.execute("SELECT payload_json, severity FROM connector_diagnostics WHERE id = ?", (diag_id,)).fetchone()
     payload = json.loads(row["payload_json"])

@@ -341,14 +341,21 @@ class DistributionServiceV2:
             self.db.commit()
         return result.to_dict()
 
-    def log_connector_diagnostic(self, connector: str, payload: dict[str, Any], severity: str = "info") -> str:
+    def log_connector_diagnostic(
+        self,
+        connector: str,
+        payload: dict[str, Any],
+        severity: str = "info",
+        *,
+        project_id: str,
+    ) -> str:
         if not self.db:
             return ""
         now = int(time.time())
         diag_id = new_id("diag")
         self.db.execute(
-            "INSERT INTO connector_diagnostics(id, connector, severity, payload_json, created_at) VALUES (?, ?, ?, ?, ?)",
-            (diag_id, connector, severity, json.dumps(_redact_payload(payload), sort_keys=True), now),
+            "INSERT INTO connector_diagnostics(id, project_id, connector, severity, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (diag_id, str(project_id), connector, severity, json.dumps(_redact_payload(payload), sort_keys=True), now),
         )
         self.db.commit()
         return diag_id

@@ -15,6 +15,7 @@ def test_atnc_001_dr_rehearsal_runner(runtime):
         "primary_outage_failover",
         "active_outage_dr_only",
         "global_outage_local_only",
+        "policy_restore",
     ]
 
     failover = next(step for step in report["steps"] if step["step_name"] == "primary_outage_failover")

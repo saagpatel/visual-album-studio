@@ -94,10 +94,10 @@ class AuditDashboardServiceV1:
             """
             SELECT connector, severity, COUNT(*) AS c
             FROM connector_diagnostics
-            WHERE created_at >= ?
+            WHERE project_id = ? AND created_at >= ?
             GROUP BY connector, severity
             """,
-            (int(since_epoch),),
+            (project_id, int(since_epoch)),
         ).fetchall()
 
         total_events = 0

@@ -44,6 +44,12 @@ Scales:
     - `acceptance_nc_201`, `acceptance_nc_202`, `acceptance_nc_203`
     - strict verify, strict capstone
   - capstone marker: `capstone_finished=2026-03-01T18:56:40Z`, `result[live_closeout]=pass`.
+- Audit follow-up remediation update:
+  - cross-project diagnostics contamination risk reduced by project-scoping diagnostics queries and schema extension (`migrations/017_connector_diagnostics_project_scope.sql`).
+  - DR rehearsal policy mutation risk reduced by policy snapshot/restore behavior in `DRRehearsalRunnerV1`.
+  - collaboration timeline actor-filter drift reduced by replay metadata persistence and replay actor filtering.
+  - audit export raw leakage risk reduced by enforcing redacted payload output for `include_raw`.
+  - revalidation gates passed with `capstone_finished=2026-03-01T19:44:56Z`, `result[live_closeout]=pass`.
 - Post-V2 Waves 3-6 closure update:
   - `PV2-102` scheduling optimization delivered with quota/backoff/blackout controls.
   - `PV2-002` preset exchange delivered with schema/signature/permission enforcement.

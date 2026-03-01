@@ -15,6 +15,7 @@ def test_itv2_305_connector_privacy_redaction_masks_sensitive_keys(runtime):
             },
             "normal_value": "ok",
         },
+        project_id="project_itv2305_a",
     )
     row = runtime.db.execute("SELECT payload_json FROM connector_diagnostics WHERE id = ?", (diag_id,)).fetchone()
     payload = json.loads(row["payload_json"])
@@ -33,6 +34,7 @@ def test_itv2_305_connector_privacy_redaction_masks_sensitive_text(runtime):
             "message": "Bearer abcdef",
             "details": ["keep", "refresh_token=xyz"],
         },
+        project_id="project_itv2305_b",
     )
     row = runtime.db.execute("SELECT payload_json FROM connector_diagnostics WHERE id = ?", (diag_id,)).fetchone()
     payload = json.loads(row["payload_json"])

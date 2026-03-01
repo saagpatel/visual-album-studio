@@ -52,11 +52,11 @@ class AuditDashboardExportServiceV1:
             """
             SELECT id, connector, severity, payload_json, created_at
             FROM connector_diagnostics
-            WHERE created_at >= ?
+            WHERE project_id = ? AND created_at >= ?
             ORDER BY created_at DESC
             LIMIT 25
             """,
-            (int(since_epoch),),
+            (project_id, int(since_epoch)),
         ).fetchall()
         report["diagnostics"] = [
             {
@@ -94,7 +94,8 @@ class AuditDashboardExportServiceV1:
         files = [str(summary_path), str(text_path)]
         if include_raw:
             raw_path = root / "dashboard_raw.json"
-            raw_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+            # Keep exported raw payload redacted to preserve bundle safety guarantees.
+            raw_path.write_text(json.dumps(safe_report, indent=2, sort_keys=True), encoding="utf-8")
             files.append(str(raw_path))
 
         manifest = {

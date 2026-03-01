@@ -12,7 +12,7 @@ def test_itnc_001_rehearsal_persists_run_and_steps(runtime):
     assert run_row is not None
     assert run_row["status"] == "passed"
     assert "-Q" in run_row["quarter_label"]
-    assert int(step_rows["c"]) == 4
+    assert int(step_rows["c"]) == 5
 
     latest = runner.latest_report(project_id="proj_itnc001")
     assert latest["ok"] is True

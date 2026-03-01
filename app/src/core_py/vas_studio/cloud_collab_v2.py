@@ -314,6 +314,12 @@ class CollaborationService:
             now = self._now()
             if result.get("ok"):
                 replayed += 1
+                detail = {
+                    "result": result,
+                    "actor_id": envelope.actor_id,
+                    "device_id": envelope.device_id,
+                    "operation": envelope.operation,
+                }
                 self.db.execute(
                     "UPDATE cloud_sync_queue SET status = 'replayed', updated_at = ? WHERE id = ?",
                     (now, queue_id),
@@ -328,13 +334,20 @@ class CollaborationService:
                         project_id,
                         queue_id,
                         envelope.sequence,
-                        json.dumps(result, sort_keys=True),
+                        json.dumps(detail, sort_keys=True),
                         now,
                     ),
                 )
             else:
                 failed += 1
                 error_code = str(result.get("error_code", "E_SYNC_PUSH_FAILED"))
+                detail = {
+                    "result": result,
+                    "actor_id": envelope.actor_id,
+                    "device_id": envelope.device_id,
+                    "operation": envelope.operation,
+                    "error_code": error_code,
+                }
                 self.db.execute(
                     "UPDATE cloud_sync_queue SET status = 'failed', error_code = ?, updated_at = ? WHERE id = ?",
                     (error_code, now, queue_id),
@@ -349,7 +362,7 @@ class CollaborationService:
                         project_id,
                         queue_id,
                         envelope.sequence,
-                        json.dumps(result, sort_keys=True),
+                        json.dumps(detail, sort_keys=True),
                         now,
                     ),
                 )

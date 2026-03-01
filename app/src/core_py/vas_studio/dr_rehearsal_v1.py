@@ -65,6 +65,9 @@ class DRRehearsalRunnerV1:
     def run_quarterly_rehearsal(self, *, project_id: str, sequence_start: int = 1000) -> dict[str, Any]:
         now = self._now()
         run_id = new_id("dr_run")
+        previous_policy = self.replication_service.get_residency_policy(project_id).get("constraint", {})
+        restored = False
+        restore_error = ""
 
         self.replication_service.set_residency_policy(
             project_id=project_id,
@@ -82,37 +85,63 @@ class DRRehearsalRunnerV1:
         ]
 
         steps: list[dict[str, Any]] = []
-        for idx, (name, available, expected_region, expected_error) in enumerate(scenarios):
-            sequence = int(sequence_start) + idx
-            route = self.replication_service.route_region(project_id=project_id, preferred_region="us-west-1", available_regions=available)
-
-            if expected_error:
-                ok = route.get("ok") is False and route.get("error_code") == expected_error
-            else:
-                ok = route.get("ok") is True and route.get("region") == expected_region
-
-            replication = None
-            if route.get("ok"):
-                replication = self.replication_service.replicate_envelope(
+        try:
+            for idx, (name, available, expected_region, expected_error) in enumerate(scenarios):
+                sequence = int(sequence_start) + idx
+                route = self.replication_service.route_region(
                     project_id=project_id,
-                    sequence=sequence,
-                    envelope={"operation": "dr_rehearsal", "scenario": name, "sequence": sequence},
+                    preferred_region="us-west-1",
                     available_regions=available,
                 )
-                if not expected_error:
-                    ok = ok and replication.get("ok") is True
 
-            step = DRRehearsalStepV1(
-                step_name=name,
-                sequence=sequence,
-                status="passed" if ok else "failed",
-                details={
-                    "available_regions": available,
-                    "route": route,
-                    "replication": replication,
-                },
+                if expected_error:
+                    ok = route.get("ok") is False and route.get("error_code") == expected_error
+                else:
+                    ok = route.get("ok") is True and route.get("region") == expected_region
+
+                replication = None
+                if route.get("ok"):
+                    replication = self.replication_service.replicate_envelope(
+                        project_id=project_id,
+                        sequence=sequence,
+                        envelope={"operation": "dr_rehearsal", "scenario": name, "sequence": sequence},
+                        available_regions=available,
+                    )
+                    if not expected_error:
+                        ok = ok and replication.get("ok") is True
+
+                step = DRRehearsalStepV1(
+                    step_name=name,
+                    sequence=sequence,
+                    status="passed" if ok else "failed",
+                    details={
+                        "available_regions": available,
+                        "route": route,
+                        "replication": replication,
+                    },
+                ).to_dict()
+                steps.append(step)
+        finally:
+            try:
+                self.replication_service.set_residency_policy(
+                    project_id=project_id,
+                    home_region=str(previous_policy.get("home_region", "us-west-1")),
+                    active_regions=[str(v) for v in list(previous_policy.get("active_regions", ["us-west-1", "us-east-1"]))],
+                    dr_region=str(previous_policy.get("dr_region", "eu-west-1")),
+                    allowed_regions=[str(v) for v in list(previous_policy.get("allowed_regions", ["us-west-1", "us-east-1", "eu-west-1"]))],
+                )
+                restored = True
+            except Exception as exc:  # pragma: no cover - defensive safety net
+                restore_error = str(exc)
+
+        steps.append(
+            DRRehearsalStepV1(
+                step_name="policy_restore",
+                sequence=int(sequence_start) + len(scenarios),
+                status="passed" if restored else "failed",
+                details={"restored": restored, "error": restore_error},
             ).to_dict()
-            steps.append(step)
+        )
 
         status = "passed" if all(step["status"] == "passed" for step in steps) else "failed"
         report = DRRehearsalReportV1(
