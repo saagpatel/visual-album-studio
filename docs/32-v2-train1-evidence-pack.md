@@ -4,7 +4,7 @@
 Provide auditable evidence that Train 1 (`AT-V2-101`) is closed and compatible with carry-forward strict gates.
 
 ## Candidate Context
-- Train 1 closure evidence SHA: `5567a999e9a751b3e8eb0d3df0e9c49e2f41095d`
+- Train 1 closure evidence SHA: `e123149a492cf5548352ecbadc93c9c040f9070a`
 - Date (UTC): `2026-03-01`
 
 ## Commands and Results
@@ -18,7 +18,7 @@ Provide auditable evidence that Train 1 (`AT-V2-101`) is closed and compatible w
    - Command: `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh`
    - Result: pass
    - `result[live_closeout]=pass`
-   - `capstone_finished=2026-03-01T14:20:15Z`
+   - `capstone_finished=2026-03-01T14:26:37Z`
 
 ## Evidence Artifacts
 - `out/logs/acceptance_v2_train1.log`

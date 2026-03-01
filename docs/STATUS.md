@@ -126,12 +126,14 @@
 - Train 1 closure artifacts published:
   - `docs/31-v2-train1-release-runbook.md`
   - `docs/32-v2-train1-evidence-pack.md`
+- Train 1 closure evidence SHA:
+  - `e123149a492cf5548352ecbadc93c9c040f9070a`
 - Train 1 gate verification:
   - `bash scripts/test/acceptance_v2_train1.sh` => pass (`1 passed`)
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
   - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
   - `result[live_closeout]=pass`
-  - `capstone_finished=2026-03-01T14:20:15Z`
+  - `capstone_finished=2026-03-01T14:26:37Z`
 - Milestone state:
   - `M0` complete, `M1` complete, `M2` next active implementation lane.
 
