@@ -60,6 +60,10 @@
   - `docs/30-security-hardening-backlog.md`
 - Ownership decision for this cycle:
   - Single security owner retained (`saagar210`), with residual bus-factor risk explicitly accepted.
+- Latest hardening revalidation snapshot:
+  - `main` / `38dac43e96b0e6d7b97dfb7eaabd96e774d03a70`
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - Evidence: `out/logs/capstone_baseline/security_audit_report.txt`
 
 ## V2 Program Activation Snapshot (2026-03-01)
 - V2 Train 0 foundation artifacts added:

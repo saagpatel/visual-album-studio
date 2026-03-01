@@ -3,7 +3,7 @@
 ## Scope
 - Source findings: security audit + threat model + ownership map review completed on 2026-03-01.
 - Program constraint: single-owner model retained (`saagar210`) per current operating decision.
-- Canonical branch/SHA at cycle close: `main` / `cbf4698b6752d226a9139519477d7464e472e360`.
+- Canonical branch/SHA at cycle close: `main` / `38dac43e96b0e6d7b97dfb7eaabd96e774d03a70`.
 
 ## Ownership
 - Security owner: `saagar210`
@@ -24,6 +24,10 @@
 ## Cycle Evidence
 - Strict verify command:
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
+- Latest strict verify evidence on closeout SHA:
+  - `head_sha=38dac43e96b0e6d7b97dfb7eaabd96e774d03a70`
+  - `security_audit_started=2026-03-01T13:19:17Z`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
 - Key updated files:
   - `app/src/adapters/youtube_api_adapter.gd`
   - `scripts/youtube_adapter.py`
