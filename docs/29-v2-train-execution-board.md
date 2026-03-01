@@ -109,6 +109,7 @@ Progress snapshot (2026-03-01):
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
   - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
 - [x] `result[live_closeout]=pass` on latest rerun (`capstone_finished=2026-03-01T15:54:52Z`)
+- [x] Tracking issue `#10` closed after merge/evidence publication
 Exit criteria:
 - [x] `AT-V2-301` pass
 - [x] strict verify + strict capstone pass
@@ -146,6 +147,7 @@ Progress snapshot (2026-03-01):
   - `bash scripts/test/acceptance_v2_train4.sh` => pass
   - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
   - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+- [x] Tracking issue `#11` closed after merge/evidence publication
 Exit criteria:
 - [x] `AT-V2-401` pass
 - [x] strict verify + strict capstone pass
@@ -176,6 +178,7 @@ Progress snapshot (2026-03-01):
   - `bash scripts/test/acceptance_v2_train5.sh`
 - [x] strict verify + strict capstone pass with `result[live_closeout]=pass`
 - [x] `docs/security-waivers.json` remains empty (`waivers=[]`)
+- [x] Tracking issue `#12` closed after merge/evidence publication
 Exit criteria:
 - [x] `AT-V2-501` pass
 - [x] strict verify + strict capstone pass on same `V2_CLOSEOUT_SHA` candidate window

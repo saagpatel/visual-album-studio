@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 closeout is complete on `main`; V2 M0-M5 implementation and closeout evidence are now prepared on closeout candidate branch pending final merge/tag stamp
+**Current state:** V1 and V2 closeout are complete on `main` with published release checkpoints (`closeout-2026-03-01`, `v2.4.0`, `v2-closeout-2026-03-01`)
 **Last updated:** 2026-03-01
 
 ## V2 Baseline Checkpoint (2026-03-01)
@@ -227,6 +227,32 @@
   - `AT-V2-401`: pass
   - `AT-V2-501`: pass
   - `docs/security-waivers.json`: empty waiver list
+
+## V2 GA Closeout Declaration (2026-03-01)
+- Canonical merged SHA:
+  - `db9602048675a476ee70302a1509b685b3f3a857` (`main` == `origin/main`)
+- Final release tags:
+  - `v2.4.0`
+  - `v2-closeout-2026-03-01`
+- Post-merge verification on canonical SHA:
+  - acceptance stack:
+    - `bash scripts/test/acceptance_v2_train1.sh`
+    - `bash scripts/test/acceptance_v2_train2.sh`
+    - `bash scripts/test/acceptance_v2_train3.sh`
+    - `bash scripts/test/acceptance_v2_train4.sh`
+    - `bash scripts/test/acceptance_v2_train5.sh`
+  - strict verify:
+    - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - strict capstone:
+    - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+    - `result[live_closeout]=pass`
+    - `capstone_finished=2026-03-01T16:06:33Z`
+- Issue closure:
+  - `#10` closed with evidence comment
+  - `#11` closed with evidence comment
+  - `#12` closed with evidence comment
+- Completion statement:
+  - V2 scope (`RQ-V2-001..505`, `AT-V2-000/101/201/301/401/501`) is complete and closed out on the canonical SHA with no active waivers.
 
 ## Rebaseline Summary
 - Historical harness-based acceptance passes were previously recorded, but they are not treated as final phase closure for product-grade runtime criteria.
