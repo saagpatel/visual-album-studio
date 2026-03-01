@@ -1,0 +1,14 @@
+# Default ownership
+* @saagar210
+
+# Security and governance
+/.github/workflows/ @saagar210
+/docs/16-security-privacy.md @saagar210
+/docs/19-risk-register.md @saagar210
+/docs/security-waivers.json @saagar210
+/native/vas_keyring/ @saagar210
+
+# Core pipeline critical paths
+/app/src/core/ @saagar210
+/app/src/adapters/ @saagar210
+/scripts/test/ @saagar210

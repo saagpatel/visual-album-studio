@@ -2,6 +2,8 @@
 # Sources:
 # - AGENTS.md (Codex Reliability Contract)
 # - docs/17-test-verification.md
+# - docs/26-v2-test-verification.md
+bash scripts/ci/v2_train0_gate.sh
 ./scripts/test/unit.sh
 ./scripts/test/integration.sh
 ./scripts/test/security_audit.sh

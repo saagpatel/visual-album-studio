@@ -33,6 +33,9 @@ jobs:
       - name: Policy checks
         run: node scripts/ci/require-tests-and-docs.mjs
 
+      - name: V2 Train 0 governance gate
+        run: bash scripts/ci/v2_train0_gate.sh
+
       - name: Bootstrap toolchain
         run: ./scripts/bootstrap.sh
 

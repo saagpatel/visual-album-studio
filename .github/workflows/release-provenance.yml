@@ -1,0 +1,41 @@
+name: release-provenance
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_path:
+        description: "Path to release artifact to attest"
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Resolve artifact path
+        id: path
+        run: |
+          if [ -n "${{ github.event.inputs.artifact_path }}" ]; then
+            echo "artifact=${{ github.event.inputs.artifact_path }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact=out/releases/release-bundle.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate artifact exists
+        run: |
+          test -f "${{ steps.path.outputs.artifact }}"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "${{ steps.path.outputs.artifact }}"
