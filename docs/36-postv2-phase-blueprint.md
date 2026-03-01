@@ -105,3 +105,8 @@ Exit criteria:
 
 ## Completion declaration for Post-V2 program
 Program is complete only when all six `AT-PV2-*` gates and carry-forward strict gates are pass on one canonical SHA, with zero active waivers and fully synchronized docs/issues/tags.
+
+## Execution completion stamp (2026-03-01)
+- Wave 0 through Wave 6 are complete.
+- `AT-PV2-001`, `AT-PV2-101`, `AT-PV2-102`, `AT-PV2-002`, `AT-PV2-201`, `AT-PV2-202` are pass.
+- strict verify and strict capstone are pass with `result[live_closeout]=pass`.

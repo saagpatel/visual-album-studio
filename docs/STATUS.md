@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 and V2 closeout are complete on `main`; Post-V2 Wave 0, Wave 1 (`PV2-001`), and Wave 2 (`PV2-101`) are complete with acceptance and strict-gate evidence.
+**Current state:** V1 and V2 closeout are complete on `main`; all Post-V2 backlog waves (`PV2-001`, `PV2-101`, `PV2-102`, `PV2-002`, `PV2-201`, `PV2-202`) are complete with acceptance and strict-gate evidence.
 **Last updated:** 2026-03-01
 
 ## Post-V2 Wave 0 Control-Plane Kickoff (2026-03-01)
@@ -77,6 +77,45 @@
   - `capstone_finished=2026-03-01T17:52:28Z`
 - Evidence pointers:
   - `out/logs/acceptance_pv2_101.log`
+  - `out/logs/capstone_baseline/capstone_summary.txt`
+  - `out/logs/capstone_baseline/security_audit_report.txt`
+  - `out/logs/capstone_baseline/repo_hygiene_report.txt`
+
+## Post-V2 Remaining-Wave Closure - PV2-102 / PV2-002 / PV2-201 / PV2-202 (2026-03-01)
+- Scope closed:
+  - `PV2-102`: scheduling optimization engine (`DistributionSchedulingServiceV1`)
+  - `PV2-002`: cross-project preset exchange (`PresetExchangeServiceV1`)
+  - `PV2-201`: multi-region replication and residency mobility (`MultiRegionReplicationServiceV1`)
+  - `PV2-202`: audit dashboard and anomaly escalation (`AuditDashboardServiceV1`)
+- New migration:
+  - `migrations/014_postv2_exchange_scheduler_multiregion_audit.sql`
+- Required closure suites added:
+  - `app/tests_py/unit/test_tspv2_102_quota_forecast.py`
+  - `app/tests_py/integration/test_itpv2_102_backoff_and_retry_taxonomy.py`
+  - `app/tests_py/acceptance/test_atpv2_102_scheduler_optimization.py`
+  - `app/tests_py/unit/test_tspv2_002_preset_bundle_schema.py`
+  - `app/tests_py/integration/test_itpv2_002_permission_and_signature_paths.py`
+  - `app/tests_py/acceptance/test_atpv2_002_style_exchange.py`
+  - `app/tests_py/integration/test_itpv2_201_residency_routing.py`
+  - `app/tests_py/resilience/test_rtpv2_201_failover_replay.py`
+  - `app/tests_py/acceptance/test_atpv2_201_multiregion_replication.py`
+  - `app/tests_py/unit/test_tspv2_202_audit_aggregate_contract.py`
+  - `app/tests_py/integration/test_itpv2_202_anomaly_escalation_workflow.py`
+  - `app/tests_py/acceptance/test_atpv2_202_audit_dashboard_anomaly.py`
+- Gate evidence:
+  - `bash scripts/test/acceptance_pv2_102.sh` => pass
+  - `bash scripts/test/acceptance_pv2_002.sh` => pass
+  - `bash scripts/test/acceptance_pv2_201.sh` => pass
+  - `bash scripts/test/acceptance_pv2_202.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T18:15:22Z`
+- Evidence pointers:
+  - `out/logs/acceptance_pv2_102.log`
+  - `out/logs/acceptance_pv2_002.log`
+  - `out/logs/acceptance_pv2_201.log`
+  - `out/logs/acceptance_pv2_202.log`
   - `out/logs/capstone_baseline/capstone_summary.txt`
   - `out/logs/capstone_baseline/security_audit_report.txt`
   - `out/logs/capstone_baseline/repo_hygiene_report.txt`

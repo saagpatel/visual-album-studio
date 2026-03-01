@@ -85,3 +85,17 @@ Record and link at minimum:
 - Any open critical/high security finding without explicit temporary RC waiver.
 - Any unresolved determinism/reliability regression in mandatory scenarios.
 - Any unresolved critical accessibility issue in core workflows.
+
+## Completion snapshot (2026-03-01)
+- All Post-V2 acceptance commands are implemented and passing:
+  - `acceptance_pv2_001.sh`
+  - `acceptance_pv2_101.sh`
+  - `acceptance_pv2_102.sh`
+  - `acceptance_pv2_002.sh`
+  - `acceptance_pv2_201.sh`
+  - `acceptance_pv2_202.sh`
+- Final strict-gate evidence on closeout candidate:
+  - strict verify: pass
+  - strict capstone: pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T18:15:22Z`

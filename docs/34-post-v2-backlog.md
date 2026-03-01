@@ -56,8 +56,6 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
       - `scripts/test/acceptance_pv2_001.sh`
     - operations runbook section:
       - `docs/39-postv2-ops-runbook.md`
-- Remaining backlog items are not started in implementation code:
-  - `PV2-002`, `PV2-102`, `PV2-201`, `PV2-202`
 - `PV2-101`: complete (wave 2 closure on 2026-03-01)
   - provider adapters added:
     - `facebook_reels`
@@ -70,6 +68,39 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
     - `app/tests_py/integration/test_itpv2_101_provider_policy_redaction.py`
     - `app/tests_py/acceptance/test_atpv2_101_provider_expansion.py`
     - `scripts/test/acceptance_pv2_101.sh`
+- `PV2-102`: complete (wave 3 closure on 2026-03-01)
+  - scheduling optimization service delivered:
+    - `app/src/core_py/vas_studio/distribution_scheduler_v1.py`
+  - closure test/evidence suites:
+    - `app/tests_py/unit/test_tspv2_102_quota_forecast.py`
+    - `app/tests_py/integration/test_itpv2_102_backoff_and_retry_taxonomy.py`
+    - `app/tests_py/acceptance/test_atpv2_102_scheduler_optimization.py`
+    - `scripts/test/acceptance_pv2_102.sh`
+- `PV2-002`: complete (wave 4 closure on 2026-03-01)
+  - preset exchange service delivered:
+    - `app/src/core_py/vas_studio/preset_exchange_v1.py`
+  - closure test/evidence suites:
+    - `app/tests_py/unit/test_tspv2_002_preset_bundle_schema.py`
+    - `app/tests_py/integration/test_itpv2_002_permission_and_signature_paths.py`
+    - `app/tests_py/acceptance/test_atpv2_002_style_exchange.py`
+    - `scripts/test/acceptance_pv2_002.sh`
+- `PV2-201`: complete (wave 5 closure on 2026-03-01)
+  - multi-region replication service delivered:
+    - `app/src/core_py/vas_studio/multi_region_v1.py`
+    - `migrations/014_postv2_exchange_scheduler_multiregion_audit.sql`
+  - closure test/evidence suites:
+    - `app/tests_py/integration/test_itpv2_201_residency_routing.py`
+    - `app/tests_py/resilience/test_rtpv2_201_failover_replay.py`
+    - `app/tests_py/acceptance/test_atpv2_201_multiregion_replication.py`
+    - `scripts/test/acceptance_pv2_201.sh`
+- `PV2-202`: complete (wave 6 closure on 2026-03-01)
+  - audit dashboard and anomaly escalation service delivered:
+    - `app/src/core_py/vas_studio/audit_dashboard_v1.py`
+  - closure test/evidence suites:
+    - `app/tests_py/unit/test_tspv2_202_audit_aggregate_contract.py`
+    - `app/tests_py/integration/test_itpv2_202_anomaly_escalation_workflow.py`
+    - `app/tests_py/acceptance/test_atpv2_202_audit_dashboard_anomaly.py`
+    - `scripts/test/acceptance_pv2_202.sh`
 
 ## Rendering and ML enhancements
 | Item | Description | Reason deferred | Priority | Suggested phase/quarter | Dependency notes |

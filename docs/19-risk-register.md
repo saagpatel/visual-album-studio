@@ -36,6 +36,19 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
+- Post-V2 Waves 3-6 closure update:
+  - `PV2-102` scheduling optimization delivered with quota/backoff/blackout controls.
+  - `PV2-002` preset exchange delivered with schema/signature/permission enforcement.
+  - `PV2-201` multi-region residency and replication checkpoints delivered for US active-active + EU DR workflows.
+  - `PV2-202` audit/anomaly dashboard delivered with ownership escalation mapping.
+  - Post-V2 remaining-wave gates passed:
+    - `bash scripts/test/acceptance_pv2_102.sh`
+    - `bash scripts/test/acceptance_pv2_002.sh`
+    - `bash scripts/test/acceptance_pv2_201.sh`
+    - `bash scripts/test/acceptance_pv2_202.sh`
+    - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh`
+    - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh`
+  - capstone marker: `capstone_finished=2026-03-01T18:15:22Z`, `result[live_closeout]=pass`.
 - Post-V2 Wave 2 (`PV2-101`) closure update:
   - new provider lanes delivered for Facebook Reels and X with quota/policy controls.
   - provider constraint migration added (`migrations/013_postv2_distribution_provider_expansion.sql`).

@@ -8,11 +8,11 @@ The V2 train program is complete; execution now extends to Post-V2 backlog closu
 
 Post-V2 wave tracking issues:
 - `#19` - `PV2-001` adaptive model auto-selection completion (`completed`)
-- `#20` - `PV2-002` style-transfer preset exchange
+- `#20` - `PV2-002` style-transfer preset exchange (`completed`)
 - `#21` - `PV2-101` provider expansion (Facebook Reels, X) (`completed`)
-- `#22` - `PV2-102` scheduling optimization engine
-- `#23` - `PV2-201` multi-region replication/residency mobility
-- `#24` - `PV2-202` audit dashboards/anomaly detection
+- `#22` - `PV2-102` scheduling optimization engine (`completed`)
+- `#23` - `PV2-201` multi-region replication/residency mobility (`completed`)
+- `#24` - `PV2-202` audit dashboards/anomaly detection (`completed`)
 
 Post-V2 control-plane artifacts:
 - `docs/36-postv2-phase-blueprint.md`
