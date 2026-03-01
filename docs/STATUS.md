@@ -1,7 +1,7 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** Project scope complete on `main` at `f608c203520d00b8b0a33946a502ba8cfdfe8991` with release checkpoint tag `closeout-2026-03-01`
+**Current state:** Project scope complete on `main`; release checkpoint tag published as `closeout-2026-03-01`
 **Last updated:** 2026-03-01
 
 ## Rebaseline Summary
