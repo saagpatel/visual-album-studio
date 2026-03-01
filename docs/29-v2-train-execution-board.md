@@ -3,6 +3,28 @@
 ## Purpose
 Track full V2 execution from current baseline to 100% completion (`AT-V2-000` .. `AT-V2-501`) with explicit milestones, dependencies, and gate evidence.
 
+## Post-V2 Program Extension (Wave 0 Kickoff, 2026-03-01)
+The V2 train program is complete; execution now extends to Post-V2 backlog closure using the Wave plan in `docs/36-postv2-phase-blueprint.md`.
+
+Post-V2 wave tracking issues:
+- `#19` - `PV2-001` adaptive model auto-selection completion
+- `#20` - `PV2-002` style-transfer preset exchange
+- `#21` - `PV2-101` provider expansion (Facebook Reels, X)
+- `#22` - `PV2-102` scheduling optimization engine
+- `#23` - `PV2-201` multi-region replication/residency mobility
+- `#24` - `PV2-202` audit dashboards/anomaly detection
+
+Post-V2 control-plane artifacts:
+- `docs/36-postv2-phase-blueprint.md`
+- `docs/37-postv2-requirements-traceability.md`
+- `docs/38-postv2-test-verification.md`
+- `scripts/test/acceptance_pv2_001.sh`
+- `scripts/test/acceptance_pv2_002.sh`
+- `scripts/test/acceptance_pv2_101.sh`
+- `scripts/test/acceptance_pv2_102.sh`
+- `scripts/test/acceptance_pv2_201.sh`
+- `scripts/test/acceptance_pv2_202.sh`
+
 ## Program Constants
 - Owner: `saagar210`
 - Model: `single-owner`

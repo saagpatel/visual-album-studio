@@ -7,6 +7,25 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
 - Train 3/4 execution notes and closeout follow-ups
 
 ## Execution status
+- Wave 0 control-plane kickoff (2026-03-01):
+  - governance docs published:
+    - `docs/36-postv2-phase-blueprint.md`
+    - `docs/37-postv2-requirements-traceability.md`
+    - `docs/38-postv2-test-verification.md`
+  - acceptance gate stubs published:
+    - `scripts/test/acceptance_pv2_001.sh`
+    - `scripts/test/acceptance_pv2_002.sh`
+    - `scripts/test/acceptance_pv2_101.sh`
+    - `scripts/test/acceptance_pv2_102.sh`
+    - `scripts/test/acceptance_pv2_201.sh`
+    - `scripts/test/acceptance_pv2_202.sh`
+  - tracking issue board opened:
+    - `#19` (`PV2-001`)
+    - `#20` (`PV2-002`)
+    - `#21` (`PV2-101`)
+    - `#22` (`PV2-102`)
+    - `#23` (`PV2-201`)
+    - `#24` (`PV2-202`)
 - `PV2-001`: in progress (execution started 2026-03-01)
   - initial slice delivered:
     - hardware profile contract (`HardwareProfileV1`)
@@ -26,7 +45,8 @@ This backlog captures work intentionally deferred beyond V2 GA after delivery of
     - auto-selection telemetry now records final outcome after model-path resolution (`selected` vs `fallback`)
     - added regression for missing-model drift to ensure fallback + telemetry accuracy:
       - `app/tests_py/integration/test_itpv2_001_adaptive_model_selection.py::test_itpv2_001_missing_model_file_forces_fallback_event`
-- Remaining backlog items are not started.
+- Remaining backlog items are not started in implementation code:
+  - `PV2-002`, `PV2-101`, `PV2-102`, `PV2-201`, `PV2-202`
 
 ## Rendering and ML enhancements
 | Item | Description | Reason deferred | Priority | Suggested phase/quarter | Dependency notes |

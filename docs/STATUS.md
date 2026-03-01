@@ -1,8 +1,40 @@
 # Visual Album Studio — STATUS
 
 **Project:** Visual Album Studio
-**Current state:** V1 and V2 closeout are complete on `main` with published release checkpoints (`closeout-2026-03-01`, `v2.4.0`, `v2-closeout-2026-03-01`)
+**Current state:** V1 and V2 closeout are complete on `main`; Post-V2 Wave 0 control-plane execution is active for backlog items `PV2-001/002/101/102/201/202`.
 **Last updated:** 2026-03-01
+
+## Post-V2 Wave 0 Control-Plane Kickoff (2026-03-01)
+- Baseline at kickoff:
+  - branch: `main`
+  - baseline SHA: `9173fe473c733374feb1b497c9b5b5080d237e94`
+- Post-V2 governance artifacts published:
+  - `docs/36-postv2-phase-blueprint.md`
+  - `docs/37-postv2-requirements-traceability.md`
+  - `docs/38-postv2-test-verification.md`
+- Post-V2 acceptance gate stubs published:
+  - `scripts/test/acceptance_pv2_001.sh`
+  - `scripts/test/acceptance_pv2_002.sh`
+  - `scripts/test/acceptance_pv2_101.sh`
+  - `scripts/test/acceptance_pv2_102.sh`
+  - `scripts/test/acceptance_pv2_201.sh`
+  - `scripts/test/acceptance_pv2_202.sh`
+- Post-V2 execution issue board opened:
+  - `#19` (`PV2-001`)
+  - `#20` (`PV2-002`)
+  - `#21` (`PV2-101`)
+  - `#22` (`PV2-102`)
+  - `#23` (`PV2-201`)
+  - `#24` (`PV2-202`)
+- Wave 0 strict revalidation on branch `codex/postv2-wave0-control-plane-20260301`:
+  - `env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh` => pass
+  - `env VAS_SECURITY_STRICT=1 VAS_YT_TEST_VIDEO_PATH=/Users/d/Projects/visual-album-studio/out/fixtures/live_test_video_large.mp4 ./scripts/test/capstone_audit.sh` => pass
+  - `result[live_closeout]=pass`
+  - `capstone_finished=2026-03-01T17:31:53Z`
+  - evidence:
+    - `out/logs/capstone_baseline/capstone_summary.txt`
+    - `out/logs/capstone_baseline/security_audit_report.txt`
+    - `out/logs/capstone_baseline/repo_hygiene_report.txt`
 
 ## V2 Baseline Checkpoint (2026-03-01)
 - Canonical V2 execution baseline SHA: `502e2be460dd395da9f6b5ba80b892d31a3a45cf` (`main` == `origin/main` at checkpoint time).

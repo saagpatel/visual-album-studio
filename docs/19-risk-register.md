@@ -36,6 +36,13 @@ Scales:
 | RSK-024 | Packaging/update architecture introduces non-deterministic release artifacts. | Medium | Medium | Deterministic manifest generation; pinned toolchain metadata; dry-run packaging gate before release usage. | TS-016 and AT-007 packaging dry-run validation. | T/I/J (Phase 7) |
 
 ## Recent updates (2026-03-01)
+- Post-V2 Wave 0 control-plane kickoff:
+  - Post-V2 governance and verification docs published:
+    - `docs/36-postv2-phase-blueprint.md`
+    - `docs/37-postv2-requirements-traceability.md`
+    - `docs/38-postv2-test-verification.md`
+  - Post-V2 tracking issues opened: `#19`, `#20`, `#21`, `#22`, `#23`, `#24`.
+  - Risk ownership remains single-owner; bus-factor is accepted with ongoing ownership-map cadence.
 - V2 GA closeout declaration:
   - release closeout SHA `db9602048675a476ee70302a1509b685b3f3a857` with tags `v2.4.0` and `v2-closeout-2026-03-01` published.
   - post-closeout docs stamp SHA `7d5c1d3e50fe96fe850cf7359f78f3892680388f` revalidated with strict capstone pass.
