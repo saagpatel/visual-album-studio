@@ -20,7 +20,7 @@ jobs:
         run: bash scripts/ops/export_security_ownership_map.sh
 
       - name: Upload ownership map artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: security-ownership-map
           path: |
