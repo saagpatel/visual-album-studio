@@ -53,10 +53,19 @@ while IFS= read -r path; do
   fi
 done < <(git ls-files)
 
+gitignore_has() {
+  local required="$1"
+  if command -v rg >/dev/null 2>&1; then
+    rg -n --fixed-strings "$required" .gitignore >/dev/null 2>&1
+  else
+    grep -n -F -- "$required" .gitignore >/dev/null 2>&1
+  fi
+}
+
 echo ""
 echo "[gitignore_checks]"
 for required in "out/**" "app/.godot/**" "app/**/*.import" "tools/ffmpeg/**" "worker/.venv/**" "native/vas_keyring/target/**" ".codex_audit/**"; do
-  if rg -n --fixed-strings "$required" .gitignore >/dev/null 2>&1; then
+  if gitignore_has "$required"; then
     echo "present=$required"
   else
     echo "missing=$required"
