@@ -12,7 +12,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      - uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788
         with:
           version: 10.28.1
       - id: node-workspace
@@ -41,7 +41,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      - uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788
         with:
           version: 10.28.1
       - id: node-workspace
@@ -68,7 +68,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      - uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788
         with:
           version: 10.28.1
       - id: node-workspace
@@ -114,7 +114,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      - uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788
         with:
           version: 10.28.1
       - id: node-workspace
