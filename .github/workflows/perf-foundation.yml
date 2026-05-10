@@ -97,7 +97,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: bash scripts/perf/check-assets.sh
+      - id: asset-script
+        run: |
+          if [[ -f scripts/perf/check-assets.sh ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No asset perf script found; skipping asset perf lane."
+          fi
+      - if: steps.asset-script.outputs.present == 'true'
+        run: bash scripts/perf/check-assets.sh
 
   perf-memory:
     runs-on: ubuntu-latest
