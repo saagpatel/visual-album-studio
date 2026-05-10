@@ -284,9 +284,9 @@ def main() -> int:
     print("")
     print("success: refresh token acquired")
     print(f"wrote secure env file: {os.path.abspath(args.out_file)}")
-    print(f"client_id: {_masked(client_id)}")
-    print(f"client_secret: {_masked(client_secret)}")
-    print(f"refresh_token: {_masked(refresh_token)}")
+    print("client_id: configured")
+    print(f"client_secret: {'configured' if client_secret else 'not configured'}")
+    print("refresh_token: written")
     print("next: use this file for local live-validation setup")
     return 0
 
