@@ -24,6 +24,9 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install media tools
+        uses: FedericoCarboni/setup-ffmpeg@v3
+
       - name: Install security tools
         run: |
           python -m pip install --upgrade pip
@@ -58,6 +61,9 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install media tools
+        uses: FedericoCarboni/setup-ffmpeg@v3
+
       - name: Install pinned Godot 4.4
         run: |
           mkdir -p out/tools/godot44/bin
@@ -89,6 +95,9 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install media tools
+        uses: FedericoCarboni/setup-ffmpeg@v3
 
       - name: Bootstrap toolchain
         run: ./scripts/bootstrap.sh
