@@ -198,3 +198,49 @@ Source: `.codex/verify.commands` (derived from `docs/00-readme.md` and `scripts/
 - Architecture-impacting changes must include an ADR in `/docs/adr/`.
 - Required checks are blocking when `fail` or `not-run`: lint, typecheck, tests, coverage, diff coverage, docs check.
 - Reviewer -> fixer -> reviewer loop is required before merge.
+
+<!-- portfolio-context:start -->
+# Portfolio Context
+
+## What This Project Is
+
+Visual Album Studio is a local-first desktop/video pipeline for generating music-synced visual albums. It focuses on deterministic, resumable exports, frame-accurate audio alignment, BLAKE3 verification, disaster-recovery rehearsal, anomaly triage, and optional distribution integrations.
+
+## Current State
+
+The repo is active maintenance work after V1/V2 completion. The next-cycle roadmap is provider policy watching, anomaly auto-triage, and scheduler simulation overlays. Current local changes are PR-template metadata, so recovery should remain documentation-only.
+
+## Stack
+
+| Layer | Technology |
+|-------|------------|
+| Language | Python 3.11+ |
+| Core | Custom pipeline engine (vas_studio) |
+| Export verification | BLAKE3 content hashing |
+| Database | SQLite (migrations in migrations/) |
+| Testing | pytest (unit, integration, acceptance) |
+
+## How To Run
+
+```bash
+# Run strict verification
+env VAS_SECURITY_STRICT=1 bash .codex/scripts/run_verify_commands.sh
+
+# Run capstone audit (requires test video)
+env VAS_SECURITY_STRICT=1 \
+  VAS_YT_TEST_VIDEO_PATH=/path/to/test_video.mp4 \
+  ./scripts/test/capstone_audit.sh
+```
+
+## Known Risks
+
+- Export determinism and BLAKE3 verification are core product contracts; do not weaken hashing or checkpoint behavior.
+- Strict verification uses `VAS_SECURITY_STRICT=1`; avoid calling the repo healthy without that gate when security-sensitive paths change.
+- Capstone audit needs a real test video path and should not be faked with placeholder media.
+- Keep distribution-provider behavior behind explicit policy and verification checks.
+
+## Next Recommended Move
+
+Close the current PR-template drift separately, then continue the next-cycle provider policy, anomaly triage, and scheduler simulation work behind strict verification.
+
+<!-- portfolio-context:end -->
