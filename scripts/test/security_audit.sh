@@ -139,14 +139,7 @@ fi
 
 echo ""
 echo "[python_security_lint]"
-if command -v bandit >/dev/null 2>&1; then
-  if bandit -q -r worker/vas_audio_worker app/src/core_py scripts/youtube_adapter.py \
-    --exclude worker/.venv > "$OUT_DIR/bandit_report.txt"; then
-    echo "bandit=pass"
-  else
-    strict_failed_check "bandit_findings" "bandit=fail (see $OUT_DIR/bandit_report.txt)" || true
-  fi
-elif [[ -x worker/.venv/bin/bandit ]]; then
+if [[ -x worker/.venv/bin/bandit ]]; then
   if worker/.venv/bin/bandit -q -r worker/vas_audio_worker app/src/core_py scripts/youtube_adapter.py \
     --exclude worker/.venv > "$OUT_DIR/bandit_report.txt"; then
     echo "bandit=pass"
@@ -163,6 +156,13 @@ elif [[ -x worker/.venv/bin/python ]]; then
       echo "bandit=skip (bandit module unavailable)"
     fi
   fi
+elif command -v bandit >/dev/null 2>&1; then
+  if bandit -q -r worker/vas_audio_worker app/src/core_py scripts/youtube_adapter.py \
+    --exclude worker/.venv > "$OUT_DIR/bandit_report.txt"; then
+    echo "bandit=pass"
+  else
+    strict_failed_check "bandit_findings" "bandit=fail (see $OUT_DIR/bandit_report.txt)" || true
+  fi
 else
   strict_missing_tool "bandit" "bandit" || true
   if [[ "$STRICT_MODE" != "1" ]]; then
@@ -172,13 +172,7 @@ fi
 
 echo ""
 echo "[python_dependency_audit]"
-if command -v pip-audit >/dev/null 2>&1; then
-  if pip-audit > "$OUT_DIR/pip_audit_report.txt"; then
-    echo "pip_audit=pass"
-  else
-    strict_failed_check "pip_audit_findings" "pip_audit=fail (see $OUT_DIR/pip_audit_report.txt)" || true
-  fi
-elif [[ -x worker/.venv/bin/pip-audit ]]; then
+if [[ -x worker/.venv/bin/pip-audit ]]; then
   if worker/.venv/bin/pip-audit > "$OUT_DIR/pip_audit_report.txt"; then
     echo "pip_audit=pass"
   else
@@ -192,6 +186,12 @@ elif [[ -x worker/.venv/bin/python ]]; then
     if [[ "$STRICT_MODE" != "1" ]]; then
       echo "pip_audit=skip (pip_audit module unavailable)"
     fi
+  fi
+elif command -v pip-audit >/dev/null 2>&1; then
+  if pip-audit > "$OUT_DIR/pip_audit_report.txt"; then
+    echo "pip_audit=pass"
+  else
+    strict_failed_check "pip_audit_findings" "pip_audit=fail (see $OUT_DIR/pip_audit_report.txt)" || true
   fi
 else
   strict_missing_tool "pip_audit" "pip-audit" || true
