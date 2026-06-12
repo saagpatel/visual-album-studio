@@ -23,7 +23,7 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No package.json found; skipping Node perf lane."
           fi
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         if: steps.node-workspace.outputs.present == 'true'
         with:
           node-version: 20
@@ -52,7 +52,7 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No package.json found; skipping Node perf lane."
           fi
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         if: steps.node-workspace.outputs.present == 'true'
         with:
           node-version: 20
@@ -79,7 +79,7 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No package.json found; skipping Node perf lane."
           fi
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         if: steps.node-workspace.outputs.present == 'true'
         with:
           node-version: 20
@@ -125,7 +125,7 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No package.json found; skipping Node perf lane."
           fi
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         if: steps.node-workspace.outputs.present == 'true'
         with:
           node-version: 20
