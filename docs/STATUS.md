@@ -759,6 +759,7 @@
 - A third signed review found that the symlink inspector could fail open on macOS because its executable path was unavailable. The follow-up must reject symlinks and inspection errors before using workspace paths; the failed review remains part of the delivery history and a normal signed PASS is required.
 - A fourth signed review identified a Windows-specific manifest replacement risk: the underlying rename may remove an existing destination before promotion, leaving no valid job manifest after a crash or failed move. This is a data-loss finding and requires repair and a normal signed PASS; no override applies.
 - The follow-up journals a verified previous manifest before replacement and verifies staged restoration into an absent primary. Local fixtures exercise missing-primary recovery, prior and replacement primary states, failed installation, and ambiguous-state refusal. They do not establish actual Windows runtime behavior; interrupted pre-publication staging files can remain as inert siblings.
+- A subsequent signed review found the journal rejected default and relative workspace paths. The follow-up normalizes workspace paths consistently and tests both configurations; the failed review remains part of the delivery history and a normal signed PASS is required.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.

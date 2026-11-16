@@ -10,12 +10,23 @@ var asset_service
 var _atomic_write_after_stage: Callable
 var _symlink_inspection_supported_override: Variant = null
 var _job_manifest_install_override: Callable
+var _tmp_dir: String = ""
+var _configured_paths_safe: bool = true
 
 func _init(p_db = null, p_paths: Dictionary = {}, p_ffmpeg = null, p_asset_service = null) -> void:
 	db = p_db
 	paths = p_paths
 	ffmpeg = p_ffmpeg
 	asset_service = p_asset_service
+	var cwd = DirAccess.open(".")
+	if cwd == null:
+		_configured_paths_safe = false
+		return
+	# Resolve the workspace root once against Godot's process working directory,
+	# matching the base used by the existing relative FileAccess paths.
+	var base_dir = cwd.get_current_dir()
+	_tmp_dir = _resolve_configured_output_path(String(paths.get("tmp_dir", "out/tmp")), base_dir)
+	_configured_paths_safe = _tmp_dir != ""
 
 func plan_export(project_id: String, _export_preset_id: String = "") -> Dictionary:
 	var rows = db.query("SELECT id, fps, width, height, duration_frames FROM projects WHERE id = %s LIMIT 1;" % db.quote(project_id))
@@ -83,6 +94,8 @@ func _run_export(
 	job_id: String = "",
 	resume_existing: bool = false
 ) -> Dictionary:
+	if not _configured_paths_safe:
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Configured export path is unsafe", "job_id": job_id}
 	var license_check = asset_service.validate_production_allowed(audio_asset_id)
 	if not draft and not bool(license_check.get("allowed", false)):
 		return {
@@ -101,7 +114,7 @@ func _run_export(
 	var segment_frames = fps * 60
 	var segments = plan_segments(duration_frames, segment_frames)
 
-	var workspace = String(paths.get("tmp_dir", "out/tmp")).path_join("jobs").path_join(job_id)
+	var workspace = _tmp_dir.path_join("jobs").path_join(job_id)
 	var seg_dir = workspace.path_join("segments")
 	var concat_dir = workspace.path_join("concat")
 	var final_dir = workspace.path_join("final")
@@ -373,7 +386,9 @@ func _with_export_context(result: Dictionary, job_id: String, export_id: String)
 	return contextual
 
 func _acquire_job_lock(job_id: String) -> Dictionary:
-	var jobs_root = String(paths.get("tmp_dir", "out/tmp")).path_join("jobs")
+	if not _configured_paths_safe:
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Configured export path is unsafe", "job_id": job_id}
+	var jobs_root = _tmp_dir.path_join("jobs")
 	if _path_has_symlink_component(jobs_root):
 		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Export job path contains a symlink", "job_id": job_id}
 	DirAccess.make_dir_recursive_absolute(jobs_root)
@@ -395,7 +410,9 @@ func _acquire_job_lock(job_id: String) -> Dictionary:
 	return {"ok": true, "lock_path": lock_path}
 
 func _release_job_lock(job_id: String) -> bool:
-	var lock_path = String(paths.get("tmp_dir", "out/tmp")).path_join("jobs").path_join(job_id + ".lock")
+	if not _configured_paths_safe:
+		return false
+	var lock_path = _tmp_dir.path_join("jobs").path_join(job_id + ".lock")
 	var owner_path = lock_path.path_join("owner.json")
 	if _path_has_symlink_component(lock_path) or _path_has_symlink_component(owner_path):
 		return false
@@ -1241,6 +1258,21 @@ func _path_has_symlink_component(path: String) -> bool:
 			return true
 	return false
 
+func _resolve_configured_output_path(configured_path: String, base_dir: String) -> String:
+	# Inspect the raw value first so simplification cannot hide a traversal
+	# component or an existing symlink from the fail-closed path guard.
+	if configured_path.strip_edges() == "" or _path_has_symlink_component(configured_path):
+		return ""
+	var resolved = configured_path
+	if resolved.begins_with("res://") or resolved.begins_with("user://"):
+		resolved = ProjectSettings.globalize_path(resolved)
+	elif not resolved.is_absolute_path():
+		resolved = base_dir.path_join(resolved)
+	resolved = resolved.simplify_path()
+	if not resolved.is_absolute_path() or _path_has_symlink_component(resolved):
+		return ""
+	return resolved
+
 func _symlink_inspection_supported() -> bool:
 	if _symlink_inspection_supported_override != null:
 		return bool(_symlink_inspection_supported_override)
@@ -1264,7 +1296,9 @@ func _sha256_text(text: String) -> String:
 	return hash.finish().hex_encode()
 
 func _checkpoint_hash(video_path: String, fps: int, frame_index: int) -> String:
-	var tmp_png = String(paths.get("tmp_dir", "out/tmp")).path_join("checkpoint_%s_%d.png" % [VasIds.new_id("cp"), frame_index])
+	if not _configured_paths_safe:
+		return ""
+	var tmp_png = _tmp_dir.path_join("checkpoint_%s_%d.png" % [VasIds.new_id("cp"), frame_index])
 	var t = float(frame_index) / max(float(fps), 1.0)
 	var capture = ffmpeg.run(PackedStringArray([
 		"-y",

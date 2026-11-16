@@ -146,6 +146,8 @@ func _init() -> void:
 		quit(_run_crash_child())
 	elif OS.get_environment("VAS_RESUME_CONTENDER_MODE") == "1":
 		quit(_run_lock_contender())
+	elif OS.get_environment("VAS_RESUME_RELATIVE_PATH_CHILD_MODE") == "1":
+		quit(_run_relative_path_child())
 	else:
 		quit(_run())
 
@@ -454,9 +456,147 @@ func _run() -> int:
 		return 1
 	if not _run_symlink_guard_controls(fixture_root, project, analysis, template):
 		return 1
+	if not _run_relative_tmp_dir_controls(fixture_root, project, analysis, template):
+		return 1
 
 	print("Phase 1 resume integration passed: interruption, same-job recovery, input mismatch, post-render failures, symlink guards, and segment tampering")
 	return 0
+
+func _run_relative_tmp_dir_controls(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary) -> bool:
+	# A child process gives each relative-path case an isolated current directory
+	# below the unique fixture root while the main fixture remains in the checkout.
+	var default_root := fixture_root.path_join("relative-path-default")
+	var relative_root := fixture_root.path_join("relative-path-explicit")
+	for case_root in [default_root, relative_root]:
+		if not _assert(not FileAccess.file_exists(case_root) and not DirAccess.dir_exists_absolute(case_root), "relative-path case root must be absent before fixture creation"):
+			return false
+	DirAccess.make_dir_recursive_absolute(default_root)
+	DirAccess.make_dir_recursive_absolute(relative_root)
+	if not _assert(DirAccess.dir_exists_absolute(default_root) and DirAccess.dir_exists_absolute(relative_root), "relative-path case roots must be created inside the owned fixture root"):
+		return false
+	var default_ok := _run_relative_tmp_dir_subprocess(default_root, "default")
+	var relative_ok := _run_relative_tmp_dir_subprocess(relative_root, "relative")
+	return default_ok and relative_ok
+
+func _run_relative_tmp_dir_subprocess(case_root: String, case_kind: String) -> bool:
+	var case_root_access := DirAccess.open(case_root)
+	if not _assert(case_root_access != null, "relative-path case root must be readable before project setup"):
+		return false
+	case_root_access.list_dir_begin()
+	var first_entry := case_root_access.get_next()
+	case_root_access.list_dir_end()
+	if not _assert(first_entry == "", "relative-path case root pre-inventory must be empty"):
+		return false
+	var source_root := ProjectSettings.globalize_path("res://").trim_suffix("/")
+	for relative_path in ["project.godot", "tests/phase1_resume_test.gd", "src/core/export_service.gd", "src/shared/ids.gd", "src/adapters/ffmpeg_adapter.gd"]:
+		var source_path := source_root.path_join(relative_path)
+		var destination_path := case_root.path_join(relative_path)
+		DirAccess.make_dir_recursive_absolute(destination_path.get_base_dir())
+		var source_file := FileAccess.open(source_path, FileAccess.READ)
+		if not _assert(source_file != null, "relative-path child must read only the required project fixture source"):
+			return false
+		var destination_file := FileAccess.open(destination_path, FileAccess.WRITE)
+		if not _assert(destination_file != null, "relative-path child must copy required source into its task-owned project root"):
+			return false
+		destination_file.store_buffer(source_file.get_buffer(source_file.get_length()))
+		destination_file.close()
+		source_file.close()
+	var executable := OS.get_executable_path()
+	var output: Array = []
+	var exit_code := OS.execute("/usr/bin/env", PackedStringArray([
+		"VAS_RESUME_RELATIVE_PATH_CHILD_MODE=1",
+		"VAS_RESUME_RELATIVE_PATH_KIND=" + case_kind,
+		"VAS_RESUME_FIXTURE_ROOT=" + case_root,
+		executable,
+		"--headless",
+		"--path",
+		case_root,
+		"--script",
+		"res://tests/phase1_resume_test.gd",
+	]), output, true)
+	if exit_code != 0:
+		print("Relative-path child output: ", "\n".join(output))
+	return _assert(exit_code == 0, case_kind + " relative-path child must pass its task-owned export/resume fixture")
+
+func _run_relative_path_child() -> int:
+	var case_root := OS.get_environment("VAS_RESUME_FIXTURE_ROOT")
+	var case_kind := OS.get_environment("VAS_RESUME_RELATIVE_PATH_KIND")
+	var cwd_access := DirAccess.open(".")
+	if cwd_access == null or cwd_access.get_current_dir().simplify_path() != case_root.simplify_path():
+		return _fail("relative-path child working directory must exactly match its fresh task-owned case root")
+	var case_paths: Dictionary
+	var jobs_relative_path: String
+	var case_label: String
+	if case_kind == "default":
+		case_paths = {"root": case_root}
+		jobs_relative_path = "out/tmp/jobs"
+		case_label = "default tmp_dir"
+	elif case_kind == "relative":
+		case_paths = {"root": case_root, "tmp_dir": "relative/tmp", "out_dir": "relative/out", "exports_dir": "relative/exports"}
+		jobs_relative_path = "relative/tmp/jobs"
+		case_label = "explicit relative tmp_dir"
+	else:
+		return _fail("relative-path child requires a recognized isolated case kind")
+	var analysis := {"tempo_bpm": 120.0, "analysis_version": "fixture-analysis-1"}
+	var template := {"schema_version": 1, "metadata": {"title": "fixture", "description": "fixture", "tags": []}}
+	if not _run_relative_tmp_dir_case(case_root, case_paths, jobs_relative_path, _project(), analysis, template, case_label):
+		return 1
+	print("Relative tmp_dir export/resume passed: ", case_label)
+	return 0
+
+func _run_relative_tmp_dir_case(
+	case_root: String,
+	configured_paths: Dictionary,
+	jobs_relative_path: String,
+	project: Dictionary,
+	analysis: Dictionary,
+	template: Dictionary,
+	case_label: String
+) -> bool:
+	var audio_dir := String(configured_paths.get("out_dir", "out")).path_join("library")
+	DirAccess.make_dir_recursive_absolute(audio_dir)
+	var audio_path := audio_dir.path_join("audio.wav")
+	var audio_file := FileAccess.open(audio_path, FileAccess.WRITE)
+	if not _assert(audio_file != null, case_label + " fixture must create synthetic audio inside its task-owned directory"):
+		return false
+	audio_file.store_string("synthetic audio for " + case_label)
+	audio_file.close()
+	var db := FixtureDb.new()
+	var ffmpeg := FixtureFfmpeg.new()
+	var exporter := ExportService.new(db, configured_paths, ffmpeg, FixtureAssets.new())
+	var interrupted := exporter.export_project(project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(interrupted.get("error", "")) == "E_FFMPEG_FAILED", case_label + " export must reach its synthetic second-segment interruption"):
+		print(interrupted)
+		return false
+	var job_id := String(interrupted.get("job_id", ""))
+	var export_id := String(interrupted.get("export_id", ""))
+	if not _assert(job_id != "" and export_id != "", case_label + " interruption must return resumable job and export IDs"):
+		return false
+	var job_root := case_root.path_join(jobs_relative_path).path_join(job_id)
+	var first_segment := job_root.path_join("segments/000/segment.mp4")
+	if not _assert(FileAccess.file_exists(first_segment), case_label + " must retain its first completed segment under the task-owned root"):
+		return false
+	var first_segment_calls := int(ffmpeg.segment_encodes.get("000", 0))
+	var resumed := exporter.resume_export(job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(not resumed.has("error"), case_label + " resume must finish from the returned job ID"):
+		print(resumed)
+		return false
+	if not _assert(String(resumed.get("job_id", "")) == job_id and String(resumed.get("export_id", "")) == export_id, case_label + " resume must preserve job and export IDs"):
+		return false
+	var expected_bundle_dir := String(configured_paths.get("exports_dir", "out/exports")).path_join(export_id)
+	if not _assert(String(resumed.get("bundle_dir", "")) == expected_bundle_dir, case_label + " export result must preserve the configured relative bundle path"):
+		print(resumed)
+		return false
+	var export_row: Dictionary = db.exports.get(export_id, {})
+	if not _assert(String(export_row.get("bundle_relpath", "")) == expected_bundle_dir, case_label + " database bundle_relpath must preserve the same relative path"):
+		print(export_row)
+		return false
+	if not _assert(int(ffmpeg.segment_encodes.get("000", 0)) == first_segment_calls, case_label + " resume must reuse the completed first segment"):
+		return false
+	var bundle_manifest := expected_bundle_dir.path_join("build_manifest.json")
+	if not _assert(FileAccess.file_exists(bundle_manifest), case_label + " resume must publish its completed bundle inside the task-owned root"):
+		return false
+	return true
 
 func _run_post_render_failure_controls(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary) -> bool:
 	var paths := {
