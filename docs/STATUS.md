@@ -738,6 +738,11 @@
   - `docs/22-project-closeout-report.md`
   - `docs/23-post-v1-backlog.md`
 
+## Phase 1 resume recheck — 2026-11-16
+- STOP: full Phase 1 acceptance and strict verification have not been re-established. A process crash leaves a persistent lock and requires supervised reconciliation; the implementation does not automatically infer that a lock is stale.
+- A draft Godot 4.4 fixture with real FFmpeg passed for a returned second-segment failure, same-job reuse, changed-input rejection, corrupted-segment re-encoding, and bundle registration recovery. A separate synthetic child-process stop verified that a crash retains the lock and segment evidence, rejects a competing resume, and permits recovery after supervised fixture-only reconciliation. These checks do not constitute the full AT-001 or strict verification gate.
+- Next: review and verify the recovery contract, run applicable repository acceptance gates, and retain the STOP until their requirements are satisfied.
+
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
 - ASM-201: Phase 5 and Phase 6 may be provisionally marked `PENDING_LIVE_VALIDATION` when live API validation is unavailable.
