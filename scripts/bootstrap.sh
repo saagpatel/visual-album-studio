@@ -80,7 +80,7 @@ verify_managed_ffmpeg_if_present
 
 python3 -m venv worker/.venv
 source worker/.venv/bin/activate
-python -m pip install --upgrade pip >/dev/null
+python -m pip install --upgrade pip setuptools >/dev/null
 if [[ -f worker/requirements.lock ]]; then
   python -m pip install -r worker/requirements.lock >/dev/null
 fi

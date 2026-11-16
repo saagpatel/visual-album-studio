@@ -7,6 +7,7 @@ var db
 var paths: Dictionary
 var ffmpeg
 var asset_service
+var _atomic_write_after_stage: Callable
 
 func _init(p_db = null, p_paths: Dictionary = {}, p_ffmpeg = null, p_asset_service = null) -> void:
 	db = p_db
@@ -119,7 +120,7 @@ func _run_export(
 	if actual_audio_hash == "":
 		return {"error": "E_AUDIO_HASH_FAILED", "message": "Could not hash the export audio input", "job_id": job_id}
 	audio_row["sha256"] = actual_audio_hash
-	var binding = _resume_binding(project, audio_asset_id, actual_audio_hash, analysis, template, draft, fps, width, height, duration_frames, segments)
+	var binding = _resume_binding(project, audio_asset_id, actual_audio_hash, analysis, template, draft, simulate_only, fps, width, height, duration_frames, segments)
 	if binding == "":
 		return {"error": "E_RESUME_BINDING_UNAVAILABLE", "message": "Could not identify the renderer source and toolchain; refusing to create or resume a reusable job", "job_id": job_id}
 	var job_manifest_path = workspace.path_join("job_manifest.json")
@@ -707,13 +708,38 @@ func _write_json(path: String, payload: Dictionary) -> void:
 
 func _write_json_atomic(path: String, payload: Dictionary) -> bool:
 	var temporary_path = path + ".%s.partial" % VasIds.new_id("write")
+	var serialized = JSON.stringify(payload, "\t")
+	var expected_bytes = serialized.to_utf8_buffer()
 	var file = FileAccess.open(temporary_path, FileAccess.WRITE)
 	if file == null:
 		return false
-	file.store_string(JSON.stringify(payload, "\t"))
+	file.store_string(serialized)
+	var store_error = file.get_error()
 	file.flush()
+	var flush_error = file.get_error()
 	file.close()
-	return DirAccess.rename_absolute(temporary_path, path) == OK
+	if store_error != OK or flush_error != OK:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+	if _atomic_write_after_stage.is_valid():
+		_atomic_write_after_stage.call(temporary_path)
+
+	var readback = FileAccess.open(temporary_path, FileAccess.READ)
+	if readback == null:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+	var actual_bytes = readback.get_buffer(expected_bytes.size())
+	var read_error = readback.get_error()
+	var exact_size = readback.get_length() == expected_bytes.size()
+	readback.close()
+	if read_error != OK or not exact_size or actual_bytes != expected_bytes:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+
+	if DirAccess.rename_absolute(temporary_path, path) != OK:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+	return true
 
 func _segment_is_reusable(segment_path: String, manifest_path: String, expected: Dictionary) -> bool:
 	if _path_has_symlink_component(segment_path) or _path_has_symlink_component(manifest_path):
@@ -743,6 +769,7 @@ func _resume_binding(
 	analysis: Dictionary,
 	template: Dictionary,
 	draft: bool,
+	simulate_only: bool,
 	fps: int,
 	width: int,
 	height: int,
@@ -757,13 +784,14 @@ func _resume_binding(
 	if exporter_source_hash == "" or ffmpeg_adapter_source_hash == "" or ffmpeg_build_hash == "" or ffmpeg_version == "unknown" or godot_version == "":
 		return ""
 	var snapshot = {
-		"schema_version": 1,
+		"schema_version": 2,
 		"project": project,
 		"audio_asset_id": audio_asset_id,
 		"audio_sha256": actual_audio_hash,
 		"analysis": analysis,
 		"template": template,
 		"draft": draft,
+		"simulate_only": simulate_only,
 		"fps": fps,
 		"width": width,
 		"height": height,

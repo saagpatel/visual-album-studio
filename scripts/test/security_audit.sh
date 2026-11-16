@@ -88,6 +88,11 @@ echo "head_sha=$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 echo "strict_mode=$STRICT_MODE"
 echo "waiver_file=$WAIVER_FILE"
 
+if ! command -v rg >/dev/null 2>&1; then
+  echo "ripgrep=fail (required scanner missing: rg)" >&2
+  exit 1
+fi
+
 echo ""
 echo "[secret_scan_tracked_files]"
 SECRET_PATTERN='(AIza[0-9A-Za-z_-]{35}|GOCSPX-[0-9A-Za-z_-]{20,}|1//[0-9A-Za-z_-]{20,}|ghp_[0-9A-Za-z]{36}|xox[baprs]-[0-9A-Za-z-]{10,}|-----BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY-----)'
@@ -176,11 +181,17 @@ if [[ -x worker/.venv/bin/pip-audit ]]; then
   if worker/.venv/bin/pip-audit > "$OUT_DIR/pip_audit_report.txt"; then
     echo "pip_audit=pass"
   else
+    cat "$OUT_DIR/pip_audit_report.txt"
     strict_failed_check "pip_audit_findings" "pip_audit=fail (see $OUT_DIR/pip_audit_report.txt)" || true
   fi
 elif [[ -x worker/.venv/bin/python ]]; then
-  if worker/.venv/bin/python -m pip_audit > "$OUT_DIR/pip_audit_report.txt" 2>/dev/null; then
-    echo "pip_audit=pass"
+  if worker/.venv/bin/python -c 'import importlib.util, sys; sys.exit(importlib.util.find_spec("pip_audit") is None)' >/dev/null 2>&1; then
+    if worker/.venv/bin/python -m pip_audit > "$OUT_DIR/pip_audit_report.txt" 2>&1; then
+      echo "pip_audit=pass"
+    else
+      cat "$OUT_DIR/pip_audit_report.txt"
+      strict_failed_check "pip_audit_findings" "pip_audit=fail (see $OUT_DIR/pip_audit_report.txt)" || true
+    fi
   else
     strict_missing_tool "pip_audit" "pip-audit" || true
     if [[ "$STRICT_MODE" != "1" ]]; then
@@ -191,6 +202,7 @@ elif command -v pip-audit >/dev/null 2>&1; then
   if pip-audit > "$OUT_DIR/pip_audit_report.txt"; then
     echo "pip_audit=pass"
   else
+    cat "$OUT_DIR/pip_audit_report.txt"
     strict_failed_check "pip_audit_findings" "pip_audit=fail (see $OUT_DIR/pip_audit_report.txt)" || true
   fi
 else

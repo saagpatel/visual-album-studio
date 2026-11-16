@@ -752,6 +752,10 @@
 - Both runs used checksum-verified Godot 4.4 and PATH FFmpeg 9.0.2, the documented fallback when the managed FFmpeg is absent; they do not establish acceptance with pinned FFmpeg 8.0.1. The scoped synthetic Keychain entry was absent after each run. A crashed export still needs supervised lock reconciliation.
 - The earlier STOP and its evidence are retained above as historical findings. These local results do not establish hosted CI or signed review.
 
+### Review and hosted-gate follow-up — 2026-11-16
+- The first signed review requested changes: simulation mode was missing from the resume binding, and staged manifest writes were promoted without checking write errors and readback. The follow-up adds mode binding and checks the complete staged bytes before promotion; regression fixtures cover both mode changes and a truncated staged file.
+- The initial hosted quality run failed its dependency audit on outdated seeded `setuptools`; another job encountered a media-tool download failure. The audit also exposed missing `rg` on hosted runners. These failures are retained as history; setup now upgrades the disposable tooling, installs the required scanner, and fails closed if the scanner is unavailable.
+
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
 - ASM-201: Phase 5 and Phase 6 may be provisionally marked `PENDING_LIVE_VALIDATION` when live API validation is unavailable.

@@ -24,6 +24,11 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ripgrep
+
       - name: Install media tools
         uses: FedericoCarboni/setup-ffmpeg@v3
 
@@ -61,6 +66,11 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ripgrep
+
       - name: Install media tools
         uses: FedericoCarboni/setup-ffmpeg@v3
 
@@ -95,6 +105,11 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ripgrep
 
       - name: Install media tools
         uses: FedericoCarboni/setup-ffmpeg@v3

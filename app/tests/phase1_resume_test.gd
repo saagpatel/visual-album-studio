@@ -203,6 +203,46 @@ func _run() -> int:
 		return 1
 	if not _assert(JSON.parse_string(FileAccess.get_file_as_string(atomic_destination)).get("value", "") == "new", "atomic replacement must publish the new manifest"):
 		return 1
+	var failed_write_destination := fixture_root.path_join("tmp/failed_atomic_write.json")
+	var prior_manifest_bytes := "{\"job_id\":\"fixture-prior\",\"resume_binding\":\"prior-binding\"}\n"
+	var prior_manifest := FileAccess.open(failed_write_destination, FileAccess.WRITE)
+	if not _assert(prior_manifest != null, "failed-write fixture must create its prior manifest"):
+		return 1
+	prior_manifest.store_string(prior_manifest_bytes)
+	prior_manifest.close()
+	var truncated_temp_path := ""
+	var truncation_fault := {"opened": false}
+	exporter._atomic_write_after_stage = func(temp_path: String) -> void:
+		truncated_temp_path = temp_path
+		var truncated_temp := FileAccess.open(temp_path, FileAccess.WRITE)
+		if truncated_temp == null:
+			return
+		truncation_fault["opened"] = true
+		truncated_temp.store_string("{")
+		truncated_temp.flush()
+		truncated_temp.close()
+	var failed_manifest_write := exporter._write_json_atomic(failed_write_destination, {"job_id": "fixture-replacement"})
+	exporter._atomic_write_after_stage = Callable()
+	if not _assert(bool(truncation_fault["opened"]), "failed-write fixture must truncate only the staged temporary manifest"):
+		return 1
+	if not _assert(not failed_manifest_write, "atomic manifest write must reject a truncated staged temporary file"):
+		return 1
+	if not _assert(FileAccess.get_file_as_string(failed_write_destination).to_utf8_buffer() == prior_manifest_bytes.to_utf8_buffer(), "failed atomic write must preserve the prior manifest byte-for-byte"):
+		return 1
+	if not _assert(not FileAccess.file_exists(truncated_temp_path), "failed atomic write must remove the rejected temporary file"):
+		return 1
+	var simulated := exporter.export_project(project, "fixture-audio", analysis, template, false, true)
+	if not _assert(not simulated.has("error"), "simulated export must finalize in its synthetic fixture"):
+		print(simulated)
+		return 1
+	var simulated_job_id := String(simulated.get("job_id", ""))
+	var calls_before_simulated_mode_mismatch := ffmpeg.calls.size()
+	var simulated_as_real := exporter.resume_export(simulated_job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(simulated_as_real.get("error", "")) == "E_RESUME_INPUT_MISMATCH", "a finalized simulated job must reject resume in real mode"):
+		print(simulated_as_real)
+		return 1
+	if not _assert(ffmpeg.calls.size() == calls_before_simulated_mode_mismatch, "simulated-to-real mismatch must be rejected before invoking FFmpeg"):
+		return 1
 	ffmpeg.on_segment_encode = func(target_path: String) -> void:
 		var pieces := target_path.split("/")
 		var jobs_index := pieces.find("jobs")
@@ -225,6 +265,13 @@ func _run() -> int:
 		return 1
 	if not _assert(String(ffmpeg.concurrent_result.get("error", "")) == "E_RESUME_LOCKED", "a concurrent resume must be blocked while a new export owns its lock"):
 		print(ffmpeg.concurrent_result)
+		return 1
+	var calls_before_real_mode_mismatch := ffmpeg.calls.size()
+	var interrupted_real_as_simulated := exporter.resume_export(job_id, project, "fixture-audio", analysis, template, false, true)
+	if not _assert(String(interrupted_real_as_simulated.get("error", "")) == "E_RESUME_INPUT_MISMATCH", "an interrupted real job must reject resume in simulated mode"):
+		print(interrupted_real_as_simulated)
+		return 1
+	if not _assert(ffmpeg.calls.size() == calls_before_real_mode_mismatch, "real-to-simulated mismatch must be rejected before invoking FFmpeg"):
 		return 1
 
 	var changed_project := project.duplicate(true)
