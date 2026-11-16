@@ -33,21 +33,24 @@ else
   TEMP_PARENT="/tmp"
 fi
 FIXTURE_ROOT="$(mktemp -d "$TEMP_PARENT/vas-resume-fixture-XXXXXX")"
+SQLITE_FIXTURE_ROOT="$(mktemp -d "$TEMP_PARENT/vas-resume-sqlite-XXXXXX")"
 
 cleanup_fixture() {
   local resolved_root resolved_parent
-  resolved_root="$(cd "$FIXTURE_ROOT" 2>/dev/null && pwd -P)" || return 0
-  resolved_parent="$(dirname "$resolved_root")"
-  python3 - "$resolved_root" "$resolved_parent" <<'PY'
+  python3 - "$FIXTURE_ROOT" "$SQLITE_FIXTURE_ROOT" <<'PY'
 import shutil
 import sys
 from pathlib import Path
 
-root = Path(sys.argv[1]).resolve(strict=True)
-parent = Path(sys.argv[2]).resolve(strict=True)
-if root.parent != parent or not root.name.startswith("vas-resume-fixture-"):
-    raise SystemExit("refusing to clean an unexpected fixture path")
-shutil.rmtree(root)
+for value, prefix in zip(sys.argv[1:], ("vas-resume-fixture-", "vas-resume-sqlite-")):
+    path = Path(value)
+    if path.is_symlink() or not path.name.startswith(prefix) or str(path.parent) not in ("/private/tmp", "/tmp"):
+        raise SystemExit("refusing to clean an unexpected fixture path")
+    if (path / "PRESERVE_FIXTURE_CHILD_RUNNING").exists():
+        print(f"Preserving fixture with a child that may still be running: {path}", file=sys.stderr)
+        continue
+    if path.is_dir():
+        shutil.rmtree(path)
 PY
 }
 trap cleanup_fixture EXIT
@@ -64,5 +67,20 @@ if [[ "$TEST_STATUS" -ne 0 ]]; then
 fi
 if printf '%s\n' "$TEST_OUTPUT" | rg -n "SCRIPT ERROR|Parse Error|Failed to load script|\[FAIL\]" >/dev/null 2>&1; then
   echo "ERROR: Phase 1 resume fixture log contains script or assertion failures" >&2
+  exit 1
+fi
+
+if TEST_OUTPUT="$(VAS_RESUME_SQLITE_FIXTURE_ROOT="$SQLITE_FIXTURE_ROOT" VAS_GODOT_BIN="$GODOT_BIN" \
+  "$GODOT_BIN" --headless --path app --script res://tests/phase1_resume_sqlite_test.gd 2>&1)"; then
+  TEST_STATUS=0
+else
+  TEST_STATUS=$?
+fi
+printf '%s\n' "$TEST_OUTPUT"
+if [[ "$TEST_STATUS" -ne 0 ]]; then
+  exit "$TEST_STATUS"
+fi
+if printf '%s\n' "$TEST_OUTPUT" | rg -n "SCRIPT ERROR|Parse Error|Failed to load script|\[FAIL\]" >/dev/null 2>&1; then
+  echo "ERROR: Phase 1 SQLite recovery fixture log contains failures" >&2
   exit 1
 fi

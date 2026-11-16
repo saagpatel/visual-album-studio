@@ -1,6 +1,10 @@
 extends SceneTree
 
 const ExportService = preload("res://src/core/export_service.gd")
+const PROCESS_EXITED := 0
+const PROCESS_MATCHED := 1
+const PROCESS_UNKNOWN := 2
+const PROCESS_ZOMBIE := 3
 
 class FixtureDb extends RefCounted:
 	var audio_sha256 := "fixture-audio-sha256"
@@ -77,11 +81,42 @@ class FixtureFfmpeg extends RefCounted:
 				on_segment_encode.call(target)
 				on_segment_encode = Callable()
 			if segment_index == "001" and pause_on_second_segment:
-				var marker := OS.get_environment("VAS_RESUME_FIXTURE_ROOT").path_join("child-paused-job-id.txt")
+				var fixture_root := OS.get_environment("VAS_RESUME_FIXTURE_ROOT")
 				var parts := target.split("/")
 				var jobs_index := parts.find("jobs")
+				if use_real_media:
+					# Throttle frames by presentation time so a real FFmpeg child remains
+					# active through the separate contender check and immediate pre-kill assertion.
+					var active_args := args.duplicate()
+					var filter_index := active_args.find("-pix_fmt")
+					if filter_index < 0:
+						return {"ok": false, "code": 2, "output": "could not locate FFmpeg output options for realtime filter"}
+					# The crash-only encoder flushes low-latency packets so the fixture can
+					# prove real media bytes and FFmpeg progress before holding the PID.
+					active_args.insert(filter_index, "1")
+					active_args.insert(filter_index, "-flush_packets")
+					active_args.insert(filter_index, "zerolatency")
+					active_args.insert(filter_index, "-tune")
+					active_args.insert(filter_index, "realtime")
+					active_args.insert(filter_index, "-vf")
+					active_args.insert(0, fixture_root.path_join("child-ffmpeg-progress.txt"))
+					active_args.insert(0, "-progress")
+					var ffmpeg_pid := OS.create_process("ffmpeg", active_args, false)
+					if ffmpeg_pid <= 0:
+						return {"ok": false, "code": 2, "output": "could not launch owned FFmpeg child"}
+					var ffmpeg_pid_file := FileAccess.open(fixture_root.path_join("child-ffmpeg-pid.txt"), FileAccess.WRITE)
+					ffmpeg_pid_file.store_string(str(ffmpeg_pid))
+					ffmpeg_pid_file.close()
+					var marker := fixture_root.path_join("child-paused-job.json")
+					var marker_file := FileAccess.open(marker, FileAccess.WRITE)
+					marker_file.store_string(JSON.stringify({"job_id": String(parts[jobs_index + 1]), "godot_pid": OS.get_process_id(), "ffmpeg_pid": ffmpeg_pid, "progress_path": fixture_root.path_join("child-ffmpeg-progress.txt"), "segment_path": target}))
+					marker_file.close()
+					while OS.is_process_running(ffmpeg_pid):
+						OS.delay_msec(10)
+					return {"ok": true, "code": 0, "output": "owned FFmpeg child completed"}
+				var marker := fixture_root.path_join("child-paused-job.json")
 				var marker_file := FileAccess.open(marker, FileAccess.WRITE)
-				marker_file.store_string(String(parts[jobs_index + 1]))
+				marker_file.store_string(JSON.stringify({"job_id": String(parts[jobs_index + 1]), "godot_pid": OS.get_process_id(), "ffmpeg_pid": 0}))
 				marker_file.close()
 				OS.delay_msec(30000)
 			if segment_index == "001" and fail_second_segment_once:
@@ -101,6 +136,8 @@ class FixtureFfmpeg extends RefCounted:
 func _init() -> void:
 	if OS.get_environment("VAS_RESUME_CHILD_MODE") == "1":
 		quit(_run_crash_child())
+	elif OS.get_environment("VAS_RESUME_CONTENDER_MODE") == "1":
+		quit(_run_lock_contender())
 	else:
 		quit(_run())
 
@@ -131,7 +168,7 @@ func _run() -> int:
 		var audio_path := fixture_root.path_join("out/library/audio.wav")
 		var audio_output: Array = []
 		var audio_code := OS.execute("ffmpeg", PackedStringArray([
-			"-y", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=61",
+			"-y", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=65",
 			"-ac", "2", audio_path,
 		]), audio_output, true)
 		if audio_code != 0:
@@ -273,6 +310,11 @@ func _run() -> int:
 	return 0
 
 func _run_abrupt_stop_control(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary, db: FixtureDb) -> bool:
+	var use_real_media := OS.get_environment("VAS_RESUME_USE_REAL_FFMPEG") == "1"
+	for marker_name in ["child-paused-job.json", "child-ffmpeg-pid.txt", "contender-result.json"]:
+		var marker_path := fixture_root.path_join(marker_name)
+		if FileAccess.file_exists(marker_path):
+			DirAccess.remove_absolute(marker_path)
 	var executable := OS.get_executable_path()
 	var app_path := ProjectSettings.globalize_path("res://").trim_suffix("/")
 	# `env` must exec Godot after applying the two child-only variables.
@@ -290,36 +332,109 @@ func _run_abrupt_stop_control(fixture_root: String, project: Dictionary, analysi
 	if child_pid <= 0:
 		push_error("[FAIL] could not launch the isolated child Godot process")
 		return false
-	var marker := fixture_root.path_join("child-paused-job-id.txt")
+	var marker := fixture_root.path_join("child-paused-job.json")
+	var ffmpeg_pid := 0
 	var deadline := Time.get_ticks_msec() + 20000
-	while not FileAccess.file_exists(marker) and Time.get_ticks_msec() < deadline and OS.is_process_running(child_pid):
+	while not FileAccess.file_exists(marker) and Time.get_ticks_msec() < deadline and _godot_process_state(child_pid) != PROCESS_EXITED:
 		OS.delay_msec(50)
 	if not FileAccess.file_exists(marker):
-		if OS.is_process_running(child_pid):
-			OS.kill(child_pid)
+		var ffmpeg_pid_path := fixture_root.path_join("child-ffmpeg-pid.txt")
+		if FileAccess.file_exists(ffmpeg_pid_path):
+			ffmpeg_pid = int(FileAccess.get_file_as_string(ffmpeg_pid_path).strip_edges())
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
 		push_error("[FAIL] child did not reach its synthetic second-segment pause")
 		return false
-	var job_id := FileAccess.get_file_as_string(marker).strip_edges()
+	var child_info_value: Variant = JSON.parse_string(FileAccess.get_file_as_string(marker))
+	if typeof(child_info_value) != TYPE_DICTIONARY:
+		var ffmpeg_pid_path := fixture_root.path_join("child-ffmpeg-pid.txt")
+		if FileAccess.file_exists(ffmpeg_pid_path):
+			ffmpeg_pid = int(FileAccess.get_file_as_string(ffmpeg_pid_path).strip_edges())
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return _assert(false, "child marker must contain owned process identities")
+	var child_info: Dictionary = child_info_value
+	var job_id := String(child_info.get("job_id", ""))
+	ffmpeg_pid = int(child_info.get("ffmpeg_pid", 0))
+	if not _assert(int(child_info.get("godot_pid", -1)) == child_pid, "child marker must identify the owned Godot process"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return false
 	var job_root := fixture_root.path_join("tmp/jobs")
 	var lock_path := job_root.path_join(job_id + ".lock")
 	var owner_path := lock_path.path_join("owner.json")
 	if not _assert(FileAccess.file_exists(owner_path), "child export must own a durable lock while paused"):
-		OS.kill(child_pid)
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
 		return false
 	var owner: Variant = JSON.parse_string(FileAccess.get_file_as_string(owner_path))
 	if not _assert(typeof(owner) == TYPE_DICTIONARY and int(owner.get("pid", -1)) == child_pid, "lock owner must identify the child process"):
-		OS.kill(child_pid)
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
 		return false
-	OS.kill(child_pid)
+	var segment_zero := job_root.path_join(job_id).path_join("segments/000/segment.mp4")
+	var segment_zero_manifest := job_root.path_join(job_id).path_join("segments/000/segment.manifest.json")
+	if not _assert(FileAccess.file_exists(segment_zero) and FileAccess.file_exists(segment_zero_manifest), "first segment must be durably encoded before the second FFmpeg process starts"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return false
+	if use_real_media and not _assert(ffmpeg_pid > 0 and _ffmpeg_process_state(ffmpeg_pid, fixture_root) == PROCESS_MATCHED, "real crash control must observe the owned FFmpeg child actively encoding segment two"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return false
+	if use_real_media:
+		var progress_path := String(child_info.get("progress_path", ""))
+		var segment_path := String(child_info.get("segment_path", ""))
+		var progress_deadline := Time.get_ticks_msec() + 10000
+		var saw_media_progress := false
+		while not saw_media_progress and Time.get_ticks_msec() < progress_deadline and _ffmpeg_process_state(ffmpeg_pid, fixture_root) == PROCESS_MATCHED:
+			var output_time_us := 0
+			if FileAccess.file_exists(progress_path):
+				for line in FileAccess.get_file_as_string(progress_path).split("\n"):
+					if String(line).begins_with("out_time_us="):
+						output_time_us = int(String(line).trim_prefix("out_time_us="))
+			var partial_file := FileAccess.open(segment_path, FileAccess.READ)
+			saw_media_progress = output_time_us > 0 and partial_file != null and partial_file.get_length() > 0
+			if partial_file != null:
+				partial_file.close()
+			if not saw_media_progress:
+				OS.delay_msec(25)
+		if not _assert(saw_media_progress, "real FFmpeg must report nonzero output-time progress and write partial segment bytes before the crash window is held"):
+			_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+			return false
+		var stop_output: Array = []
+		var stop_code := OS.execute("/bin/kill", PackedStringArray(["-STOP", str(ffmpeg_pid)]), stop_output, true)
+		if not _assert(stop_code == 0 and _ffmpeg_process_state(ffmpeg_pid, fixture_root) == PROCESS_MATCHED, "test must pause the exact progress-confirmed FFmpeg PID while preserving its live file handle"):
+			_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+			return false
+	var contender_pid := _launch_lock_contender(fixture_root)
+	if not _assert(contender_pid > 0, "separate contender process must launch while the exporter lock is held"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return false
+	var contender_deadline := Time.get_ticks_msec() + 5000
+	while OS.is_process_running(contender_pid) and Time.get_ticks_msec() < contender_deadline:
+		OS.delay_msec(25)
+	var contender_result_path := fixture_root.path_join("contender-result.json")
+	if not _assert(not OS.is_process_running(contender_pid) and FileAccess.file_exists(contender_result_path), "separate contender must finish while the owner is paused"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		if OS.is_process_running(contender_pid):
+			_stop_owned_processes(contender_pid, 0, fixture_root)
+		return false
+	var contender_result: Variant = JSON.parse_string(FileAccess.get_file_as_string(contender_result_path))
+	if not _assert(typeof(contender_result) == TYPE_DICTIONARY and String(contender_result.get("error", "")) == "E_RESUME_LOCKED", "a separate OS process must be denied concurrent resume"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return false
+	if use_real_media and not _assert(_ffmpeg_process_state(ffmpeg_pid, fixture_root) == PROCESS_MATCHED, "real FFmpeg must remain active after the contender check immediately before the abrupt kill"):
+		_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
+		return false
+	_stop_owned_processes(child_pid, ffmpeg_pid, fixture_root)
 	var stopped_deadline := Time.get_ticks_msec() + 5000
-	while OS.is_process_running(child_pid) and Time.get_ticks_msec() < stopped_deadline:
+	while not _process_is_stopped(_godot_process_state(child_pid)) and Time.get_ticks_msec() < stopped_deadline:
 		OS.delay_msec(50)
-	if not _assert(not OS.is_process_running(child_pid), "the owned child Godot process must stop"):
+	while ffmpeg_pid > 0 and not _process_is_stopped(_ffmpeg_process_state(ffmpeg_pid, fixture_root)) and Time.get_ticks_msec() < stopped_deadline:
+		OS.delay_msec(50)
+	if not _assert(_process_is_stopped(_godot_process_state(child_pid)), "the owned child Godot process must be reaped or confirmed zombie"):
+		return false
+	if not _assert(ffmpeg_pid == 0 or _process_is_stopped(_ffmpeg_process_state(ffmpeg_pid, fixture_root)), "the owned FFmpeg descendant must be reaped or confirmed zombie"):
 		return false
 	if not _assert(DirAccess.dir_exists_absolute(lock_path), "ordinary process stop must leave its lock for supervised reconciliation"):
 		return false
 	var ffmpeg := FixtureFfmpeg.new()
 	ffmpeg.fail_second_segment_once = false
+	ffmpeg.use_real_media = use_real_media
 	var paths := {
 		"root": fixture_root,
 		"out_dir": fixture_root.path_join("out"),
@@ -333,7 +448,7 @@ func _run_abrupt_stop_control(fixture_root: String, project: Dictionary, analysi
 		print(blocked)
 		return false
 	var owner_pid := int(owner.get("pid", -1))
-	if not _assert(owner_pid == child_pid and not OS.is_process_running(owner_pid), "manual recovery must prove the recorded owner is gone"):
+	if not _assert(owner_pid == child_pid and _process_is_stopped(_godot_process_state(owner_pid)), "manual recovery must confirm the recorded owner is reaped or zombie"):
 		return false
 	if not _assert(FileAccess.file_exists(job_root.path_join(job_id).path_join("job_manifest.json")), "manual recovery must retain the interrupted job manifest"):
 		return false
@@ -350,6 +465,7 @@ func _run_abrupt_stop_control(fixture_root: String, project: Dictionary, analysi
 func _run_crash_child() -> int:
 	var fixture_root := OS.get_environment("VAS_RESUME_FIXTURE_ROOT")
 	var ffmpeg := FixtureFfmpeg.new()
+	ffmpeg.use_real_media = OS.get_environment("VAS_RESUME_USE_REAL_FFMPEG") == "1"
 	ffmpeg.fail_second_segment_once = false
 	ffmpeg.pause_on_second_segment = true
 	var paths := {
@@ -363,14 +479,107 @@ func _run_crash_child() -> int:
 	print("Unexpected child export return before parent stop: ", result)
 	return 2
 
+func _launch_lock_contender(fixture_root: String) -> int:
+	var executable := OS.get_executable_path()
+	var app_path := ProjectSettings.globalize_path("res://").trim_suffix("/")
+	var contender_args := PackedStringArray([
+		"VAS_RESUME_CONTENDER_MODE=1",
+		"VAS_RESUME_FIXTURE_ROOT=" + fixture_root,
+		"VAS_RESUME_USE_REAL_FFMPEG=" + OS.get_environment("VAS_RESUME_USE_REAL_FFMPEG"),
+		executable,
+		"--headless",
+		"--path",
+		app_path,
+		"--script",
+		"res://tests/phase1_resume_test.gd",
+	])
+	return OS.create_process("/usr/bin/env", contender_args, false)
+
+func _run_lock_contender() -> int:
+	var fixture_root := OS.get_environment("VAS_RESUME_FIXTURE_ROOT")
+	var marker := fixture_root.path_join("child-paused-job.json")
+	var child_info: Variant = JSON.parse_string(FileAccess.get_file_as_string(marker))
+	if typeof(child_info) != TYPE_DICTIONARY:
+		return 2
+	var ffmpeg := FixtureFfmpeg.new()
+	ffmpeg.use_real_media = OS.get_environment("VAS_RESUME_USE_REAL_FFMPEG") == "1"
+	var paths := {
+		"root": fixture_root,
+		"out_dir": fixture_root.path_join("out"),
+		"tmp_dir": fixture_root.path_join("tmp"),
+		"exports_dir": fixture_root.path_join("exports"),
+	}
+	var exporter := ExportService.new(FixtureDb.new(), paths, ffmpeg, FixtureAssets.new())
+	var result := exporter.resume_export(String(child_info.get("job_id", "")), _project(), "fixture-audio", {"tempo_bpm": 120.0, "analysis_version": "fixture-analysis-1"}, {"schema_version": 1, "metadata": {"title": "fixture", "description": "fixture", "tags": []}}, false, false)
+	var result_file := FileAccess.open(fixture_root.path_join("contender-result.json"), FileAccess.WRITE)
+	if result_file == null:
+		return 3
+	result_file.store_string(JSON.stringify(result))
+	result_file.close()
+	return 0 if String(result.get("error", "")) == "E_RESUME_LOCKED" else 1
+
+func _stop_owned_processes(godot_pid: int, ffmpeg_pid: int, fixture_root: String) -> bool:
+	# These PIDs come only from the uniquely owned fixture child and its marker.
+	if _godot_process_state(godot_pid) == PROCESS_MATCHED:
+		OS.execute("/bin/kill", PackedStringArray(["-KILL", str(godot_pid)]), [], true)
+	if _ffmpeg_process_state(ffmpeg_pid, fixture_root) == PROCESS_MATCHED:
+		OS.execute("/bin/kill", PackedStringArray(["-KILL", str(ffmpeg_pid)]), [], true)
+	var deadline := Time.get_ticks_msec() + 5000
+	while (not _process_is_stopped(_godot_process_state(godot_pid)) or not _process_is_stopped(_ffmpeg_process_state(ffmpeg_pid, fixture_root))) and Time.get_ticks_msec() < deadline:
+		OS.delay_msec(50)
+	var godot_state := _godot_process_state(godot_pid)
+	var ffmpeg_state := _ffmpeg_process_state(ffmpeg_pid, fixture_root)
+	var stopped := _process_is_stopped(godot_state) and _process_is_stopped(ffmpeg_state)
+	if not stopped:
+		var unsafe_marker := FileAccess.open(fixture_root.path_join("PRESERVE_FIXTURE_CHILD_RUNNING"), FileAccess.WRITE)
+		if unsafe_marker != null:
+			unsafe_marker.store_string("owned process state is unconfirmed godot=%d ffmpeg=%d; preserve this fixture" % [godot_state, ffmpeg_state])
+			unsafe_marker.close()
+		push_error("Owned child process did not stop; preserve fixture root: " + fixture_root)
+	return stopped
+
+func _ffmpeg_process_state(pid: int, fixture_root: String) -> int:
+	return _observe_process_state(pid, "ffmpeg", fixture_root)
+
+func _godot_process_state(pid: int) -> int:
+	return _observe_process_state(pid, OS.get_executable_path(), "--script res://tests/phase1_resume_test.gd")
+
+func _observe_process_state(pid: int, expected_command: String, expected_context: String) -> int:
+	if pid <= 0:
+		return PROCESS_EXITED
+	var output: Array = []
+	var code := OS.execute("/bin/ps", PackedStringArray(["-p", str(pid), "-o", "stat=,command="]), output, true)
+	if code == 0 and not output.is_empty():
+		var command := "\n".join(output).strip_edges()
+		var separator := command.find(" ")
+		if separator > 0 and command.substr(0, separator).contains("Z"):
+			return PROCESS_ZOMBIE
+		command = command.substr(separator + 1).strip_edges() if separator >= 0 else command
+		if command.contains(expected_command) and command.contains(expected_context):
+			return PROCESS_MATCHED
+		return PROCESS_UNKNOWN
+	# `ps` can fail for reasons other than ESRCH; require kill -0's explicit
+	# no-such-process response before treating an empty result as proof of exit.
+	var probe_output: Array = []
+	var probe_code := OS.execute("/bin/kill", PackedStringArray(["-0", str(pid)]), probe_output, true)
+	if probe_code == 0:
+		return PROCESS_UNKNOWN
+	if "No such process" in "\n".join(probe_output):
+		return PROCESS_EXITED
+	return PROCESS_UNKNOWN
+
+func _process_is_stopped(state: int) -> bool:
+	return state == PROCESS_EXITED or state == PROCESS_ZOMBIE
+
 func _project() -> Dictionary:
+	var real_media := OS.get_environment("VAS_RESUME_USE_REAL_FFMPEG") == "1"
 	return {
 		"id": "fixture-project",
 		"name": "Resume Fixture",
 		"fps": 1,
 		"width": 8,
 		"height": 8,
-		"duration_frames": 61,
+		"duration_frames": 65 if real_media else 61,
 		"seed": 17,
 		"visual_mode": "motion_poster",
 		"preset_id": "fixture-preset",
