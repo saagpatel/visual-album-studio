@@ -7,12 +7,26 @@ var db
 var paths: Dictionary
 var ffmpeg
 var asset_service
+var _atomic_write_after_stage: Callable
+var _symlink_inspection_supported_override: Variant = null
+var _job_manifest_install_override: Callable
+var _tmp_dir: String = ""
+var _configured_paths_safe: bool = true
 
 func _init(p_db = null, p_paths: Dictionary = {}, p_ffmpeg = null, p_asset_service = null) -> void:
 	db = p_db
 	paths = p_paths
 	ffmpeg = p_ffmpeg
 	asset_service = p_asset_service
+	var cwd = DirAccess.open(".")
+	if cwd == null:
+		_configured_paths_safe = false
+		return
+	# Resolve the workspace root once against Godot's process working directory,
+	# matching the base used by the existing relative FileAccess paths.
+	var base_dir = cwd.get_current_dir()
+	_tmp_dir = _resolve_configured_output_path(String(paths.get("tmp_dir", "out/tmp")), base_dir)
+	_configured_paths_safe = _tmp_dir != ""
 
 func plan_export(project_id: String, _export_preset_id: String = "") -> Dictionary:
 	var rows = db.query("SELECT id, fps, width, height, duration_frames FROM projects WHERE id = %s LIMIT 1;" % db.quote(project_id))
@@ -42,6 +56,46 @@ func export_project(
 	draft: bool,
 	simulate_only: bool = false
 ) -> Dictionary:
+	var job_id = VasIds.new_id("job")
+	var lock_result = _acquire_job_lock(job_id)
+	if not bool(lock_result.get("ok", false)):
+		return lock_result
+	var result = _run_export(project, audio_asset_id, analysis, template, draft, simulate_only, job_id, false)
+	if not _release_job_lock(job_id):
+		result["lock_release_error"] = "Export lock could not be released; reconcile its owner record before another attempt"
+	return result
+
+func resume_export(
+	job_id: String,
+	project: Dictionary,
+	audio_asset_id: String,
+	analysis: Dictionary,
+	template: Dictionary,
+	draft: bool,
+	simulate_only: bool = false
+) -> Dictionary:
+	if not _is_safe_job_id(job_id):
+		return {"error": "E_RESUME_INVALID_JOB", "message": "Invalid export job id"}
+	var lock_result = _acquire_job_lock(job_id)
+	if not bool(lock_result.get("ok", false)):
+		return lock_result
+	var result = _run_export(project, audio_asset_id, analysis, template, draft, simulate_only, job_id, true)
+	if not _release_job_lock(job_id):
+		result["lock_release_error"] = "Export lock could not be released; reconcile its owner record before another attempt"
+	return result
+
+func _run_export(
+	project: Dictionary,
+	audio_asset_id: String,
+	analysis: Dictionary,
+	template: Dictionary,
+	draft: bool,
+	simulate_only: bool,
+	job_id: String = "",
+	resume_existing: bool = false
+) -> Dictionary:
+	if not _configured_paths_safe:
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Configured export path is unsafe", "job_id": job_id}
 	var license_check = asset_service.validate_production_allowed(audio_asset_id)
 	if not draft and not bool(license_check.get("allowed", false)):
 		return {
@@ -49,8 +103,9 @@ func export_project(
 			"message": String(license_check.get("reason", "Audio license metadata is incomplete")),
 		}
 
-	var export_id = VasIds.new_id("export")
-	var job_id = VasIds.new_id("job")
+	if job_id == "":
+		job_id = VasIds.new_id("job")
+	var export_id = ""
 
 	var fps = int(project.get("fps", 30))
 	var width = int(project.get("width", 1920))
@@ -59,29 +114,11 @@ func export_project(
 	var segment_frames = fps * 60
 	var segments = plan_segments(duration_frames, segment_frames)
 
-	var workspace = String(paths.get("tmp_dir", "out/tmp")).path_join("jobs").path_join(job_id)
+	var workspace = _tmp_dir.path_join("jobs").path_join(job_id)
 	var seg_dir = workspace.path_join("segments")
 	var concat_dir = workspace.path_join("concat")
 	var final_dir = workspace.path_join("final")
 	var exports_dir = String(paths.get("exports_dir", "out/exports"))
-	var bundle_tmp = exports_dir.path_join("%s.tmp" % export_id)
-	var bundle_dir = exports_dir.path_join(export_id)
-
-	for p in [workspace, seg_dir, concat_dir, final_dir, bundle_tmp]:
-		DirAccess.make_dir_recursive_absolute(p)
-
-	_write_json(
-		workspace.path_join("job_manifest.json"),
-		{
-			"job_id": job_id,
-			"project_id": project.get("id", ""),
-			"export_id": export_id,
-			"segments": segments,
-			"fps": fps,
-			"resolution": [width, height],
-			"created_at": int(Time.get_unix_time_from_system()),
-		},
-	)
 
 	var audio_rows = db.query("SELECT library_relpath, sha256 FROM assets WHERE id = %s LIMIT 1;" % db.quote(audio_asset_id))
 	if audio_rows.is_empty():
@@ -92,27 +129,86 @@ func export_project(
 	var audio_row: Dictionary = audio_rows[0]
 	var out_dir = String(paths.get("out_dir", "out"))
 	var audio_path = out_dir.path_join(String(audio_row.get("library_relpath", "")))
-
+	if _path_has_symlink_component(workspace) or _path_has_symlink_component(exports_dir) or _path_has_symlink_component(audio_path):
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Export path contains a symlink", "job_id": job_id}
+	var actual_audio_hash = _hash_file(audio_path)
+	if actual_audio_hash == "":
+		return {"error": "E_AUDIO_HASH_FAILED", "message": "Could not hash the export audio input", "job_id": job_id}
+	audio_row["sha256"] = actual_audio_hash
+	var binding = _resume_binding(project, audio_asset_id, actual_audio_hash, analysis, template, draft, simulate_only, fps, width, height, duration_frames, segments)
+	if binding == "":
+		return {"error": "E_RESUME_BINDING_UNAVAILABLE", "message": "Could not identify the renderer source and toolchain; refusing to create or resume a reusable job", "job_id": job_id}
+	var job_manifest_path = workspace.path_join("job_manifest.json")
+	if _path_has_symlink_component(job_manifest_path):
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Job manifest path contains a symlink", "job_id": job_id}
+	if resume_existing:
+		if not _recover_job_manifest(job_manifest_path):
+			return {"error": "E_JOB_MANIFEST_RECOVERY_FAILED", "message": "Could not safely recover the prior job manifest", "job_id": job_id}
+		if not FileAccess.file_exists(job_manifest_path):
+			return {"error": "E_RESUME_JOB_NOT_FOUND", "message": "Export job manifest is missing", "job_id": job_id}
+		var stored_value: Variant = JSON.parse_string(FileAccess.get_file_as_string(job_manifest_path))
+		if typeof(stored_value) != TYPE_DICTIONARY:
+			return {"error": "E_RESUME_INVALID_JOB", "message": "Export job manifest is invalid", "job_id": job_id}
+		var stored: Dictionary = stored_value
+		if String(stored.get("job_id", "")) != job_id or not _is_safe_export_id(String(stored.get("export_id", ""))):
+			return {"error": "E_RESUME_INVALID_JOB", "message": "Export job identity is invalid", "job_id": job_id}
+		export_id = String(stored.get("export_id", ""))
+		if String(stored.get("resume_binding", "")) == "" or String(stored.get("resume_binding", "")) != binding:
+			return _with_export_context({"error": "E_RESUME_INPUT_MISMATCH", "message": "Export inputs or toolchain differ from the original job"}, job_id, export_id)
+	else:
+		export_id = VasIds.new_id("export")
+	var bundle_tmp = exports_dir.path_join("%s.tmp.%s" % [export_id, VasIds.new_id("stage")])
+	var bundle_dir = exports_dir.path_join(export_id)
+	if _path_has_symlink_component(bundle_tmp) or _path_has_symlink_component(bundle_dir):
+		return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Export bundle path contains a symlink"}, job_id, export_id)
+	for output_path in [
+		bundle_tmp.path_join("video.mp4"), bundle_tmp.path_join("thumbnail.png"),
+		bundle_tmp.path_join("metadata.json"), bundle_tmp.path_join("provenance.json"),
+		bundle_tmp.path_join("build_manifest.json"), final_dir.path_join("video.mp4"),
+		final_dir.path_join("thumbnail.png"),
+	]:
+		if _path_has_symlink_component(output_path):
+			return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Export output path contains a symlink"}, job_id, export_id)
+	if resume_existing and DirAccess.dir_exists_absolute(bundle_dir):
+		if not _is_complete_bundle(bundle_dir, export_id, String(project.get("id", "")), job_manifest_path, binding):
+			return _with_export_context({"error": "E_RESUME_BUNDLE_INCOMPLETE", "message": "Finalized export directory is incomplete or does not match this job"}, job_id, export_id)
+		if not _register_export(export_id, job_id, String(project.get("id", "")), bundle_dir):
+			return _with_export_context({"error": "E_EXPORT_REGISTRATION_FAILED", "message": "Could not reconcile the finalized export record"}, job_id, export_id)
+		return {"export_id": export_id, "job_id": job_id, "bundle_dir": bundle_dir, "segments": segments}
+	for p in [workspace, seg_dir, concat_dir, final_dir, bundle_tmp]:
+		DirAccess.make_dir_recursive_absolute(p)
+	if not resume_existing:
+		var manifest_write = _write_job_manifest_atomic(job_manifest_path, {
+			"schema_version": 2,
+			"job_id": job_id,
+			"project_id": project.get("id", ""),
+			"export_id": export_id,
+			"segments": segments,
+			"fps": fps,
+			"resolution": [width, height],
+			"resume_binding": binding,
+			"created_at": int(Time.get_unix_time_from_system()),
+		}, false)
+		if not manifest_write:
+			return _with_export_context({"error": "E_JOB_MANIFEST_WRITE_FAILED", "message": "Could not persist export job manifest"}, job_id, export_id)
 	var seg_mp4s: Array[String] = []
 	var encoder = ffmpeg.preferred_h264_encoder()
 
 	if not simulate_only:
+		var concat_list_path = concat_dir.path_join("concat_list.txt")
 		for segment in segments:
 			var idx = int(segment.get("index", 0))
 			var seg_path = seg_dir.path_join("%03d" % idx)
+			if _path_has_symlink_component(seg_path):
+				return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Segment path contains a symlink"}, job_id, export_id)
 			var frames_path = seg_path.path_join("frames")
 			var seg_mp4 = seg_path.path_join("segment.mp4")
 			var seg_manifest_path = seg_path.path_join("segment.manifest.json")
+			if _path_has_symlink_component(frames_path) or _path_has_symlink_component(seg_mp4) or _path_has_symlink_component(seg_manifest_path) or _path_has_symlink_component(concat_list_path):
+				return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Segment artifact path contains a symlink"}, job_id, export_id)
 			DirAccess.make_dir_recursive_absolute(seg_path)
 
-			var reuse_ok = false
-			if FileAccess.file_exists(seg_mp4) and FileAccess.file_exists(seg_manifest_path):
-				var existing_manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(seg_manifest_path))
-				if typeof(existing_manifest) == TYPE_DICTIONARY:
-					var m: Dictionary = existing_manifest
-					var file_hash = _hash_file(seg_mp4)
-					if String(m.get("sha256", "")) == file_hash:
-						reuse_ok = true
+			var reuse_ok = _segment_is_reusable(seg_mp4, seg_manifest_path, segment)
 
 			if not reuse_ok:
 				_safe_remove_tree(frames_path)
@@ -121,6 +217,7 @@ func export_project(
 
 				var start_sec = float(segment.get("start_frame", 0)) / max(float(fps), 1.0)
 				var dur_sec = float(segment.get("frame_count", 0)) / max(float(fps), 1.0)
+				var partial_mp4 = seg_path.path_join("segment.%s.partial.mp4" % VasIds.new_id("attempt"))
 				var encode = ffmpeg.run(PackedStringArray([
 					"-y",
 					"-framerate", str(fps),
@@ -134,26 +231,31 @@ func export_project(
 					"-b:a", "192k",
 					"-shortest",
 					"-movflags", "+faststart",
-					seg_mp4,
+					partial_mp4,
 				]))
-				if not encode["ok"]:
-					return {
+				if not encode["ok"] or not FileAccess.file_exists(partial_mp4) or _hash_file(partial_mp4) == "":
+					return _with_export_context({
 						"error": "E_FFMPEG_FAILED",
 						"message": "Segment encode failed",
 						"details": encode,
-					}
-				var seg_hash = _hash_file(seg_mp4)
-				_write_json(seg_manifest_path, {
+					}, job_id, export_id)
+				var seg_hash = _hash_file(partial_mp4)
+				var promote_err = DirAccess.rename_absolute(partial_mp4, seg_mp4)
+				if promote_err != OK:
+					return _with_export_context({"error": "E_SEGMENT_PROMOTE_FAILED", "message": "Could not promote completed segment"}, job_id, export_id)
+				if not _write_json_atomic(seg_manifest_path, {
 					"index": idx,
 					"start_frame": int(segment.get("start_frame", 0)),
 					"frame_count": int(segment.get("frame_count", 0)),
 					"sha256": seg_hash,
-				})
+				}):
+					DirAccess.remove_absolute(seg_mp4)
+					return _with_export_context({"error": "E_SEGMENT_MANIFEST_WRITE_FAILED", "message": "Could not persist completed segment manifest"}, job_id, export_id)
 				_safe_remove_tree(frames_path)
 
 			seg_mp4s.append(seg_mp4)
 
-		var concat_list = concat_dir.path_join("concat_list.txt")
+		var concat_list = concat_list_path
 		var lines: Array[String] = []
 		for p in seg_mp4s:
 			lines.append("file '%s'" % p)
@@ -171,11 +273,11 @@ func export_project(
 			final_video,
 		]))
 		if not concat_res["ok"]:
-			return {
+			return _with_export_context({
 				"error": "E_FFMPEG_FAILED",
 				"message": "Segment concat failed",
 				"details": concat_res,
-			}
+			}, job_id, export_id)
 
 		var thumb = final_dir.path_join("thumbnail.png")
 		var thumb_res = ffmpeg.run(PackedStringArray([
@@ -187,11 +289,11 @@ func export_project(
 			thumb,
 		]))
 		if not thumb_res["ok"]:
-			return {
+			return _with_export_context({
 				"error": "E_FFMPEG_FAILED",
 				"message": "Thumbnail generation failed",
 				"details": thumb_res,
-			}
+			}, job_id, export_id)
 
 		if _file_size(thumb) > 2_000_000:
 			ffmpeg.run(PackedStringArray([
@@ -227,9 +329,11 @@ func export_project(
 			height,
 			final_video,
 			thumb,
+			job_manifest_path,
+			binding,
 		)
 		if not export_files["ok"]:
-			return export_files
+			return _with_export_context(export_files, job_id, export_id)
 	else:
 		var final_video = final_dir.path_join("video.mp4")
 		var thumb = final_dir.path_join("thumbnail.png")
@@ -258,31 +362,14 @@ func export_project(
 			height,
 			final_video,
 			thumb,
+			job_manifest_path,
+			binding,
 		)
 		if not export_files["ok"]:
-			return export_files
+			return _with_export_context(export_files, job_id, export_id)
 
-	var now = int(Time.get_unix_time_from_system())
-	var insert_export = """
-		INSERT INTO exports(
-			id, job_id, project_id, created_at, bundle_relpath, video_relpath,
-			thumbnail_relpath, metadata_relpath, provenance_relpath, build_manifest_relpath
-		) VALUES (
-			%s, %s, %s, %d, %s, %s, %s, %s, %s, %s
-		);
-	""" % [
-		db.quote(export_id),
-		db.quote(job_id),
-		db.quote(String(project.get("id", ""))),
-		now,
-		db.quote(_relative_to(String(paths.get("root", "")), bundle_dir)),
-		db.quote(_relative_to(String(paths.get("root", "")), bundle_dir.path_join("video.mp4"))),
-		db.quote(_relative_to(String(paths.get("root", "")), bundle_dir.path_join("thumbnail.png"))),
-		db.quote(_relative_to(String(paths.get("root", "")), bundle_dir.path_join("metadata.json"))),
-		db.quote(_relative_to(String(paths.get("root", "")), bundle_dir.path_join("provenance.json"))),
-		db.quote(_relative_to(String(paths.get("root", "")), bundle_dir.path_join("build_manifest.json"))),
-	]
-	db.exec(insert_export)
+	if not _register_export(export_id, job_id, String(project.get("id", "")), bundle_dir):
+		return _with_export_context({"error": "E_EXPORT_REGISTRATION_FAILED", "message": "Could not register the finalized export"}, job_id, export_id)
 
 	return {
 		"export_id": export_id,
@@ -290,6 +377,148 @@ func export_project(
 		"bundle_dir": bundle_dir,
 		"segments": segments,
 	}
+
+func _with_export_context(result: Dictionary, job_id: String, export_id: String) -> Dictionary:
+	var contextual = result.duplicate(true)
+	contextual["job_id"] = job_id
+	if export_id != "":
+		contextual["export_id"] = export_id
+	return contextual
+
+func _acquire_job_lock(job_id: String) -> Dictionary:
+	if not _configured_paths_safe:
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Configured export path is unsafe", "job_id": job_id}
+	var jobs_root = _tmp_dir.path_join("jobs")
+	if _path_has_symlink_component(jobs_root):
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Export job path contains a symlink", "job_id": job_id}
+	DirAccess.make_dir_recursive_absolute(jobs_root)
+	var lock_path = jobs_root.path_join(job_id + ".lock")
+	if _path_has_symlink_component(lock_path):
+		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Export lock path contains a symlink", "job_id": job_id}
+	if DirAccess.make_dir_absolute(lock_path) != OK:
+		return {"error": "E_RESUME_LOCKED", "message": "Export job has an active or unreconciled lock. Manual recovery requires stopping every Visual Album Studio exporter process and reaping all descendants (including FFmpeg), confirming no app instance can start another export, using one exclusive operator with no concurrent resume attempts, preserving the workspace and lock contents, and inspecting the owner record (or treating a missing record as unknown) before removing only this job lock.", "job_id": job_id}
+	var owner_path = lock_path.path_join("owner.json")
+	if not _write_json_atomic(owner_path, {
+		"job_id": job_id,
+		"pid": OS.get_process_id(),
+		"lock_created_at": int(Time.get_unix_time_from_system()),
+	}):
+		_safe_remove_tree(lock_path)
+		if DirAccess.dir_exists_absolute(lock_path):
+			return {"error": "E_RESUME_LOCK_WRITE_FAILED", "message": "Could not persist owner metadata and the lock directory remains; treat it as unreconciled and follow the supervised lock recovery procedure", "job_id": job_id}
+		return {"error": "E_RESUME_LOCK_WRITE_FAILED", "message": "Could not persist export lock owner", "job_id": job_id}
+	return {"ok": true, "lock_path": lock_path}
+
+func _release_job_lock(job_id: String) -> bool:
+	if not _configured_paths_safe:
+		return false
+	var lock_path = _tmp_dir.path_join("jobs").path_join(job_id + ".lock")
+	var owner_path = lock_path.path_join("owner.json")
+	if _path_has_symlink_component(lock_path) or _path_has_symlink_component(owner_path):
+		return false
+	if not FileAccess.file_exists(owner_path):
+		return false
+	var owner: Variant = JSON.parse_string(FileAccess.get_file_as_string(owner_path))
+	if typeof(owner) != TYPE_DICTIONARY or int(owner.get("pid", -1)) != OS.get_process_id():
+		return false
+	if DirAccess.remove_absolute(owner_path) != OK:
+		return false
+	return DirAccess.remove_absolute(lock_path) == OK
+
+func _register_export(export_id: String, job_id: String, project_id: String, bundle_dir: String) -> bool:
+	var expected_paths = _expected_export_paths(bundle_dir)
+	var existing_rows = db.query("SELECT id, job_id, project_id, bundle_relpath, video_relpath, thumbnail_relpath, metadata_relpath, provenance_relpath, build_manifest_relpath FROM exports WHERE id = %s LIMIT 1;" % db.quote(export_id))
+	if not existing_rows.is_empty():
+		var existing: Dictionary = existing_rows[0]
+		if String(existing.get("job_id", "")) != job_id or String(existing.get("project_id", "")) != project_id:
+			return false
+		for key in expected_paths:
+			if String(existing.get(key, "")) != String(expected_paths[key]):
+				return false
+		return true
+	var now = int(Time.get_unix_time_from_system())
+	var result = db.exec("""
+		INSERT OR IGNORE INTO exports(
+			id, job_id, project_id, created_at, bundle_relpath, video_relpath,
+			thumbnail_relpath, metadata_relpath, provenance_relpath, build_manifest_relpath
+		) VALUES (
+			%s, %s, %s, %d, %s, %s, %s, %s, %s, %s
+		);
+	""" % [
+		db.quote(export_id), db.quote(job_id), db.quote(project_id), now,
+		db.quote(expected_paths["bundle_relpath"]),
+		db.quote(expected_paths["video_relpath"]),
+		db.quote(expected_paths["thumbnail_relpath"]),
+		db.quote(expected_paths["metadata_relpath"]),
+		db.quote(expected_paths["provenance_relpath"]),
+		db.quote(expected_paths["build_manifest_relpath"]),
+	])
+	if not bool(result.get("ok", false)):
+		return false
+	var rows = db.query("SELECT id, job_id, project_id, bundle_relpath, video_relpath, thumbnail_relpath, metadata_relpath, provenance_relpath, build_manifest_relpath FROM exports WHERE id = %s LIMIT 1;" % db.quote(export_id))
+	if rows.is_empty() or String(rows[0].get("job_id", "")) != job_id or String(rows[0].get("project_id", "")) != project_id:
+		return false
+	for key in expected_paths:
+		if String(rows[0].get(key, "")) != String(expected_paths[key]):
+			return false
+	return true
+
+func _expected_export_paths(bundle_dir: String) -> Dictionary:
+	var root = String(paths.get("root", ""))
+	return {
+		"bundle_relpath": _relative_to(root, bundle_dir),
+		"video_relpath": _relative_to(root, bundle_dir.path_join("video.mp4")),
+		"thumbnail_relpath": _relative_to(root, bundle_dir.path_join("thumbnail.png")),
+		"metadata_relpath": _relative_to(root, bundle_dir.path_join("metadata.json")),
+		"provenance_relpath": _relative_to(root, bundle_dir.path_join("provenance.json")),
+		"build_manifest_relpath": _relative_to(root, bundle_dir.path_join("build_manifest.json")),
+	}
+
+func _is_complete_bundle(bundle_dir: String, export_id: String, project_id: String, job_manifest_path: String, binding: String) -> bool:
+	var required_paths = ["video.mp4", "thumbnail.png", "metadata.json", "provenance.json", "build_manifest.json"]
+	for relative_path in required_paths:
+		var path = bundle_dir.path_join(relative_path)
+		if _path_has_symlink_component(path) or not FileAccess.file_exists(path) or _file_size(path) <= 0:
+			return false
+	var manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(bundle_dir.path_join("build_manifest.json")))
+	if typeof(manifest) != TYPE_DICTIONARY:
+		return false
+	var snapshot_value: Variant = manifest.get("snapshot", {})
+	if typeof(snapshot_value) != TYPE_DICTIONARY:
+		return false
+	var snapshot: Dictionary = snapshot_value
+	if String(snapshot.get("export_id", "")) != export_id or String(snapshot.get("project_id", "")) != project_id:
+		return false
+	if not _recover_job_manifest(job_manifest_path):
+		return false
+	var job_manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(job_manifest_path))
+	if typeof(job_manifest) != TYPE_DICTIONARY:
+		return false
+	var receipt_value: Variant = job_manifest.get("published_bundle", {})
+	if typeof(receipt_value) != TYPE_DICTIONARY:
+		return false
+	var receipt: Dictionary = receipt_value
+	if String(receipt.get("export_id", "")) != export_id or String(receipt.get("project_id", "")) != project_id or String(receipt.get("resume_binding", "")) != binding:
+		return false
+	var hashes_value: Variant = receipt.get("files", {})
+	var outputs_value: Variant = manifest.get("outputs", {})
+	if typeof(hashes_value) != TYPE_DICTIONARY or typeof(outputs_value) != TYPE_DICTIONARY:
+		return false
+	var outputs: Dictionary = outputs_value
+	var manifest_integrity_value: Variant = outputs.get("integrity", {})
+	if typeof(manifest_integrity_value) != TYPE_DICTIONARY:
+		return false
+	var hashes: Dictionary = hashes_value
+	var manifest_integrity: Dictionary = manifest_integrity_value
+	for relative_path in required_paths:
+		var expected_hash = String(hashes.get(relative_path, ""))
+		if expected_hash.length() != 64 or not expected_hash.is_valid_hex_number(false):
+			return false
+		if _hash_file(bundle_dir.path_join(relative_path)) != expected_hash:
+			return false
+		if relative_path != "build_manifest.json" and String(manifest_integrity.get(relative_path, "")) != expected_hash:
+			return false
+	return true
 
 func _finalize_bundle(
 	bundle_tmp: String,
@@ -308,7 +537,9 @@ func _finalize_bundle(
 	width: int,
 	height: int,
 	final_video: String,
-	thumbnail: String
+	thumbnail: String,
+	job_manifest_path: String,
+	binding: String
 ) -> Dictionary:
 	var provenance = asset_service.provenance_json(
 		audio_asset_id,
@@ -359,14 +590,51 @@ func _finalize_bundle(
 		},
 	}
 
-	DirAccess.copy_absolute(final_video, bundle_tmp.path_join("video.mp4"))
-	DirAccess.copy_absolute(thumbnail, bundle_tmp.path_join("thumbnail.png"))
-	_write_json(bundle_tmp.path_join("metadata.json"), metadata)
-	_write_json(bundle_tmp.path_join("provenance.json"), provenance)
-	_write_json(bundle_tmp.path_join("build_manifest.json"), build_manifest)
+	var source_video_hash = _hash_file(final_video)
+	var source_thumbnail_hash = _hash_file(thumbnail)
+	if source_video_hash == "" or source_thumbnail_hash == "":
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not verify source export outputs"}
+	if DirAccess.copy_absolute(final_video, bundle_tmp.path_join("video.mp4")) != OK:
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not stage video in export bundle"}
+	if _hash_file(bundle_tmp.path_join("video.mp4")) != source_video_hash:
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Staged video hash differs from source output"}
+	if DirAccess.copy_absolute(thumbnail, bundle_tmp.path_join("thumbnail.png")) != OK:
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not stage thumbnail in export bundle"}
+	if _hash_file(bundle_tmp.path_join("thumbnail.png")) != source_thumbnail_hash:
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Staged thumbnail hash differs from source output"}
+	if not _write_json_atomic(bundle_tmp.path_join("metadata.json"), metadata):
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not stage export metadata"}
+	if not _write_json_atomic(bundle_tmp.path_join("provenance.json"), provenance):
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not stage export provenance"}
+	var hashes = {}
+	for relative_path in ["video.mp4", "thumbnail.png", "metadata.json", "provenance.json"]:
+		var path = bundle_tmp.path_join(relative_path)
+		var digest = _hash_file(path)
+		if digest == "":
+			return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not hash staged export content"}
+		hashes[relative_path] = digest
+	build_manifest["outputs"]["integrity"] = hashes
+	if not _write_json_atomic(bundle_tmp.path_join("build_manifest.json"), build_manifest):
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not stage build manifest"}
+	hashes["build_manifest.json"] = _hash_file(bundle_tmp.path_join("build_manifest.json"))
+	if hashes["build_manifest.json"] == "":
+		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not hash build manifest"}
+	if not _recover_job_manifest(job_manifest_path):
+		return {"ok": false, "error": "E_JOB_MANIFEST_RECOVERY_FAILED", "message": "Could not safely recover the prior job manifest"}
+	var job_manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(job_manifest_path))
+	if typeof(job_manifest) != TYPE_DICTIONARY or String(job_manifest.get("resume_binding", "")) != binding:
+		return {"ok": false, "error": "E_JOB_MANIFEST_INVALID", "message": "Job manifest changed before bundle publication"}
+	job_manifest["published_bundle"] = {
+		"export_id": export_id,
+		"project_id": String(project.get("id", "")),
+		"resume_binding": binding,
+		"files": hashes,
+	}
+	if not _write_job_manifest_atomic(job_manifest_path, job_manifest, true):
+		return {"ok": false, "error": "E_JOB_MANIFEST_WRITE_FAILED", "message": "Could not persist bundle integrity receipt"}
 
 	if DirAccess.dir_exists_absolute(bundle_dir):
-		_safe_remove_tree(bundle_dir)
+		return {"ok": false, "error": "E_BUNDLE_ALREADY_EXISTS", "message": "Refusing to replace an existing export bundle"}
 	var rename_err = DirAccess.rename_absolute(bundle_tmp, bundle_dir)
 	if rename_err != OK:
 		return {
@@ -468,6 +736,548 @@ func _write_json(path: String, payload: Dictionary) -> void:
 	f.store_string(JSON.stringify(payload, "\t"))
 	f.close()
 
+func _write_json_atomic(path: String, payload: Dictionary) -> bool:
+	var temporary_path = path + ".%s.partial" % VasIds.new_id("write")
+	var serialized = JSON.stringify(payload, "\t")
+	var expected_bytes = serialized.to_utf8_buffer()
+	var file = FileAccess.open(temporary_path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(serialized)
+	var store_error = file.get_error()
+	file.flush()
+	var flush_error = file.get_error()
+	file.close()
+	if store_error != OK or flush_error != OK:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+	if _atomic_write_after_stage.is_valid():
+		_atomic_write_after_stage.call(temporary_path)
+
+	var readback = FileAccess.open(temporary_path, FileAccess.READ)
+	if readback == null:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+	var actual_bytes = readback.get_buffer(expected_bytes.size())
+	var read_error = readback.get_error()
+	var exact_size = readback.get_length() == expected_bytes.size()
+	readback.close()
+	if read_error != OK or not exact_size or actual_bytes != expected_bytes:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+
+	if DirAccess.rename_absolute(temporary_path, path) != OK:
+		DirAccess.remove_absolute(temporary_path)
+		return false
+	return true
+
+func _write_job_manifest_atomic(path: String, payload: Dictionary, allow_replace: bool = false) -> bool:
+	if not path.is_absolute_path() or path.get_file() != "job_manifest.json":
+		return false
+	if not _recover_job_manifest(path):
+		return false
+	var primary_state = _manifest_path_state(path)
+	if primary_state == "unknown" or (allow_replace and primary_state != "present") or (not allow_replace and primary_state != "absent"):
+		return false
+	var serialized = JSON.stringify(payload, "\t")
+	var new_bytes = serialized.to_utf8_buffer()
+	if not _is_valid_job_manifest_bytes(new_bytes):
+		return false
+	var transaction_id = VasIds.new_id("replace")
+	var temporary_path = path + ".%s.replacement.partial" % transaction_id
+	if not _write_new_file_exact(temporary_path, new_bytes):
+		return false
+	if primary_state == "absent":
+		if _manifest_path_state(path) != "absent" or DirAccess.rename_absolute(temporary_path, path) != OK:
+			_remove_manifest_artifact(temporary_path)
+			return false
+		var created = _read_file_bytes_exact(path)
+		return bool(created.get("ok", false)) and created.get("bytes", PackedByteArray()) == new_bytes
+
+	var old_read = _read_file_bytes_exact(path)
+	if not bool(old_read.get("ok", false)):
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var old_bytes: PackedByteArray = old_read.get("bytes", PackedByteArray())
+	if not _is_valid_job_manifest_bytes(old_bytes):
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var previous_path = _job_manifest_previous_path(path)
+	var journal_path = _job_manifest_journal_path(path)
+	if _manifest_path_state(previous_path) != "absent" or _manifest_path_state(journal_path) != "absent":
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var previous_temporary_path = previous_path + ".%s.partial" % transaction_id
+	if not _write_new_file_exact(previous_temporary_path, old_bytes):
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var staged_previous = _read_file_bytes_exact(previous_temporary_path)
+	if not bool(staged_previous.get("ok", false)) or staged_previous.get("bytes", PackedByteArray()) != old_bytes:
+		_remove_manifest_artifact(temporary_path)
+		return false
+	if _manifest_path_state(previous_path) != "absent" or DirAccess.rename_absolute(previous_temporary_path, previous_path) != OK:
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var previous_read = _read_file_bytes_exact(previous_path)
+	if not bool(previous_read.get("ok", false)) or previous_read.get("bytes", PackedByteArray()) != old_bytes:
+		return false
+	var journal = {
+		"schema_version": 1,
+		"destination": path.get_file(),
+		"transaction_id": transaction_id,
+		"temporary": temporary_path.get_file(),
+		"previous": previous_path.get_file(),
+		"previous_sha256": _sha256_bytes(old_bytes),
+		"replacement_sha256": _sha256_bytes(new_bytes),
+	}
+	var journal_bytes = JSON.stringify(journal, "\t").to_utf8_buffer()
+	var journal_temporary_path = journal_path + ".%s.partial" % transaction_id
+	if not _write_new_file_exact(journal_temporary_path, journal_bytes):
+		_remove_manifest_artifact(temporary_path)
+		_remove_manifest_artifact(previous_path)
+		return false
+	if _manifest_path_state(journal_path) != "absent" or DirAccess.rename_absolute(journal_temporary_path, journal_path) != OK:
+		_remove_manifest_artifact(journal_temporary_path)
+		_remove_manifest_artifact(temporary_path)
+		_remove_manifest_artifact(previous_path)
+		return false
+	var published_journal = _read_file_bytes_exact(journal_path)
+	if not bool(published_journal.get("ok", false)) or published_journal.get("bytes", PackedByteArray()) != journal_bytes:
+		return false
+	var old_still_current = _read_file_bytes_exact(path)
+	if not bool(old_still_current.get("ok", false)) or old_still_current.get("bytes", PackedByteArray()) != old_bytes:
+		return false
+	if DirAccess.remove_absolute(path) != OK:
+		_recover_job_manifest(path)
+		return false
+	var install_error = OK
+	if _job_manifest_install_override.is_valid():
+		install_error = int(_job_manifest_install_override.call(temporary_path, path))
+	else:
+		install_error = DirAccess.rename_absolute(temporary_path, path)
+	if install_error != OK:
+		_recover_job_manifest(path)
+		return false
+	var installed = _read_file_bytes_exact(path)
+	if not bool(installed.get("ok", false)) or installed.get("bytes", PackedByteArray()) != new_bytes:
+		_recover_job_manifest(path)
+		return false
+	return _recover_job_manifest(path)
+
+func _recover_job_manifest(path: String) -> bool:
+	if not path.is_absolute_path() or path.get_file() != "job_manifest.json":
+		return false
+	if _path_has_symlink_component(path):
+		return false
+	var journal_path = _job_manifest_journal_path(path)
+	var previous_path = _job_manifest_previous_path(path)
+	var journal_state = _manifest_path_state(journal_path)
+	if journal_state == "unknown":
+		return false
+	if journal_state == "absent":
+		return _recover_orphan_job_manifest_previous(path, previous_path)
+	var journal_read = _read_file_bytes_exact(journal_path)
+	if not bool(journal_read.get("ok", false)):
+		return false
+	var journal_bytes: PackedByteArray = journal_read.get("bytes", PackedByteArray())
+	var journal_value: Variant = JSON.parse_string(journal_bytes.get_string_from_utf8())
+	if typeof(journal_value) != TYPE_DICTIONARY:
+		return false
+	var journal: Dictionary = journal_value
+	var transaction_id = String(journal.get("transaction_id", ""))
+	var expected_temporary_name = "%s.%s.replacement.partial" % [path.get_file(), transaction_id]
+	if int(journal.get("schema_version", 0)) != 1 or String(journal.get("destination", "")) != path.get_file():
+		return false
+	if not _matches_id(transaction_id, "replace_") or String(journal.get("temporary", "")) != expected_temporary_name or String(journal.get("previous", "")) != previous_path.get_file():
+		return false
+	var previous_hash = String(journal.get("previous_sha256", ""))
+	var replacement_hash = String(journal.get("replacement_sha256", ""))
+	if not _is_sha256_hex(previous_hash) or not _is_sha256_hex(replacement_hash):
+		return false
+	var temporary_path = path.get_base_dir().path_join(expected_temporary_name)
+	var primary_state = _manifest_path_state(path)
+	if primary_state == "unknown":
+		return false
+	if primary_state == "present":
+		var primary_read = _read_file_bytes_exact(path)
+		if not bool(primary_read.get("ok", false)):
+			return false
+		var primary_bytes: PackedByteArray = primary_read.get("bytes", PackedByteArray())
+		var primary_hash = _sha256_bytes(primary_bytes)
+		if primary_hash != previous_hash and primary_hash != replacement_hash:
+			return false
+		if not _is_valid_job_manifest_bytes(primary_bytes):
+			return false
+		return _cleanup_job_manifest_transaction(temporary_path, previous_path, journal_path, previous_hash, replacement_hash)
+	if _manifest_path_state(previous_path) != "present":
+		return false
+	var backup_read = _read_file_bytes_exact(previous_path)
+	if not bool(backup_read.get("ok", false)):
+		return false
+	var backup_bytes: PackedByteArray = backup_read.get("bytes", PackedByteArray())
+	if _sha256_bytes(backup_bytes) != previous_hash or not _is_valid_job_manifest_bytes(backup_bytes):
+		return false
+	var restore_attempt_id = VasIds.new_id("restore")
+	var restore_temporary_path = path + ".%s.restore.partial" % restore_attempt_id
+	if not _write_new_file_exact(restore_temporary_path, backup_bytes):
+		return false
+	var staged_restore = _read_file_bytes_exact(restore_temporary_path)
+	if not bool(staged_restore.get("ok", false)) or staged_restore.get("bytes", PackedByteArray()) != backup_bytes:
+		return false
+	if _manifest_path_state(path) != "absent" or DirAccess.rename_absolute(restore_temporary_path, path) != OK:
+		return false
+	var restored = _read_file_bytes_exact(path)
+	if not bool(restored.get("ok", false)) or restored.get("bytes", PackedByteArray()) != backup_bytes:
+		return false
+	return _cleanup_job_manifest_transaction(temporary_path, previous_path, journal_path, previous_hash, replacement_hash)
+
+func _recover_orphan_job_manifest_previous(path: String, previous_path: String) -> bool:
+	var previous_state = _manifest_path_state(previous_path)
+	if previous_state == "absent":
+		return true
+	if previous_state != "present" or _manifest_path_state(path) != "present":
+		return false
+	var primary = _read_file_bytes_exact(path)
+	var previous = _read_file_bytes_exact(previous_path)
+	if not bool(primary.get("ok", false)) or not bool(previous.get("ok", false)):
+		return false
+	var primary_bytes: PackedByteArray = primary.get("bytes", PackedByteArray())
+	var previous_bytes: PackedByteArray = previous.get("bytes", PackedByteArray())
+	if primary_bytes != previous_bytes or not _is_valid_job_manifest_bytes(primary_bytes):
+		return false
+	return _remove_manifest_artifact(previous_path)
+
+func _cleanup_job_manifest_transaction(temporary_path: String, previous_path: String, journal_path: String, previous_hash: String, replacement_hash: String) -> bool:
+	var temporary_state = _manifest_path_state(temporary_path)
+	if temporary_state == "unknown":
+		return false
+	if temporary_state == "present":
+		var temporary_read = _read_file_bytes_exact(temporary_path)
+		if not bool(temporary_read.get("ok", false)) or _sha256_bytes(temporary_read.get("bytes", PackedByteArray())) != replacement_hash:
+			return false
+	var previous_state = _manifest_path_state(previous_path)
+	if previous_state == "unknown":
+		return false
+	if previous_state == "present":
+		var previous_read = _read_file_bytes_exact(previous_path)
+		var previous_bytes: PackedByteArray = previous_read.get("bytes", PackedByteArray())
+		if not bool(previous_read.get("ok", false)) or _sha256_bytes(previous_bytes) != previous_hash or not _is_valid_job_manifest_bytes(previous_bytes):
+			return false
+	if not _remove_manifest_artifact(temporary_path):
+		return false
+	if not _remove_manifest_artifact(previous_path):
+		return false
+	return _remove_manifest_artifact(journal_path)
+
+func _remove_manifest_artifact(path: String) -> bool:
+	var state = _manifest_path_state(path)
+	if state == "absent":
+		return true
+	if state != "present" or DirAccess.remove_absolute(path) != OK:
+		return false
+	return _manifest_path_state(path) == "absent"
+
+func _manifest_path_state(path: String) -> String:
+	if not path.is_absolute_path() or path.get_file() == "" or _path_has_symlink_component(path.get_base_dir()):
+		return "unknown"
+	var parent_path = path.get_base_dir()
+	var parent = DirAccess.open(parent_path)
+	if parent == null:
+		if not DirAccess.dir_exists_absolute(parent_path) and not FileAccess.file_exists(parent_path) and not _path_has_symlink_component(parent_path):
+			return "absent"
+		return "unknown"
+	parent.include_hidden = true
+	if parent.list_dir_begin() != OK:
+		return "unknown"
+	var exact_entry = ""
+	var case_alias_exists = false
+	var basename = path.get_file()
+	while true:
+		var entry = parent.get_next()
+		if entry == "":
+			break
+		if entry == basename:
+			exact_entry = entry
+		elif entry.nocasecmp_to(basename) == 0:
+			case_alias_exists = true
+	parent.list_dir_end()
+	if exact_entry != "":
+		if parent.is_link(exact_entry):
+			return "unknown"
+		return "present"
+	if case_alias_exists or parent.is_link(basename) or DirAccess.dir_exists_absolute(path) or FileAccess.file_exists(path):
+		return "unknown"
+	return "absent"
+
+func _read_file_bytes_exact(path: String) -> Dictionary:
+	if _manifest_path_state(path) != "present":
+		return {"ok": false}
+	var file = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"ok": false}
+	var expected_length = int(file.get_length())
+	var bytes = file.get_buffer(expected_length)
+	var read_error = file.get_error()
+	var exact_length = bytes.size() == expected_length and int(file.get_length()) == expected_length
+	file.close()
+	return {"ok": read_error == OK and exact_length, "bytes": bytes}
+
+func _write_new_file_exact(path: String, bytes: PackedByteArray) -> bool:
+	if _manifest_path_state(path) != "absent":
+		return false
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_buffer(bytes)
+	var store_error = file.get_error()
+	file.flush()
+	var flush_error = file.get_error()
+	file.close()
+	if store_error != OK or flush_error != OK:
+		_remove_manifest_artifact(path)
+		return false
+	var readback = _read_file_bytes_exact(path)
+	if not bool(readback.get("ok", false)) or readback.get("bytes", PackedByteArray()) != bytes:
+		_remove_manifest_artifact(path)
+		return false
+	return true
+
+func _is_valid_job_manifest_bytes(bytes: PackedByteArray) -> bool:
+	var value: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+	if typeof(value) != TYPE_DICTIONARY:
+		return false
+	var manifest: Dictionary = value
+	return _is_safe_job_id(String(manifest.get("job_id", ""))) and _is_safe_export_id(String(manifest.get("export_id", ""))) and String(manifest.get("resume_binding", "")) != ""
+
+func _is_sha256_hex(value: String) -> bool:
+	return value.length() == 64 and value.is_valid_hex_number(false)
+
+func _sha256_bytes(bytes: PackedByteArray) -> String:
+	var hash = HashingContext.new()
+	hash.start(HashingContext.HASH_SHA256)
+	hash.update(bytes)
+	return hash.finish().hex_encode()
+
+func _job_manifest_previous_path(path: String) -> String:
+	return path + ".previous"
+
+func _job_manifest_journal_path(path: String) -> String:
+	return path + ".replace-journal"
+
+func _segment_is_reusable(segment_path: String, manifest_path: String, expected: Dictionary) -> bool:
+	if _path_has_symlink_component(segment_path) or _path_has_symlink_component(manifest_path):
+		return false
+	if not FileAccess.file_exists(segment_path) or not FileAccess.file_exists(manifest_path):
+		return false
+	var value: Variant = JSON.parse_string(FileAccess.get_file_as_string(manifest_path))
+	if typeof(value) != TYPE_DICTIONARY:
+		return false
+	var manifest: Dictionary = value
+	var recorded_hash = String(manifest.get("sha256", ""))
+	if recorded_hash.length() != 64 or not recorded_hash.is_valid_hex_number(false):
+		return false
+	if int(manifest.get("index", -1)) != int(expected.get("index", -2)):
+		return false
+	if int(manifest.get("start_frame", -1)) != int(expected.get("start_frame", -2)):
+		return false
+	if int(manifest.get("frame_count", -1)) != int(expected.get("frame_count", -2)):
+		return false
+	var actual_hash = _hash_file(segment_path)
+	return actual_hash != "" and actual_hash == recorded_hash
+
+func _resume_binding(
+	project: Dictionary,
+	audio_asset_id: String,
+	actual_audio_hash: String,
+	analysis: Dictionary,
+	template: Dictionary,
+	draft: bool,
+	simulate_only: bool,
+	fps: int,
+	width: int,
+	height: int,
+	duration_frames: int,
+	segments: Array
+) -> String:
+	var exporter_source_hash = _renderer_resource_hash("res://src/core/export_service.gd")
+	var ffmpeg_adapter_source_hash = _renderer_resource_hash("res://src/adapters/ffmpeg_adapter.gd")
+	var ffmpeg_build_hash = _ffmpeg_build_hash()
+	var ffmpeg_version = ffmpeg.ffmpeg_version()
+	var godot_version = _godot_version_string()
+	if exporter_source_hash == "" or ffmpeg_adapter_source_hash == "" or ffmpeg_build_hash == "" or ffmpeg_version == "unknown" or godot_version == "":
+		return ""
+	var snapshot = {
+		"schema_version": 2,
+		"project": project,
+		"audio_asset_id": audio_asset_id,
+		"audio_sha256": actual_audio_hash,
+		"analysis": analysis,
+		"template": template,
+		"draft": draft,
+		"simulate_only": simulate_only,
+		"fps": fps,
+		"width": width,
+		"height": height,
+		"duration_frames": duration_frames,
+		"segments": segments,
+		"godot_version": godot_version,
+		"ffmpeg_version": ffmpeg_version,
+		"ffmpeg_build_sha256": ffmpeg_build_hash,
+		"encoder": ffmpeg.preferred_h264_encoder(),
+		"export_service_sha256": exporter_source_hash,
+		"ffmpeg_adapter_sha256": ffmpeg_adapter_source_hash,
+	}
+	return _sha256_text(JSON.stringify(_canonicalize(snapshot)))
+
+func _renderer_resource_hash(source_path: String) -> String:
+	# Compiled Godot exports remap `.gd` resources to `.gdc` and omit source.
+	# Follow that mapping when present so the resume binding fingerprints the
+	# executable script bytes, not a stale source copy shipped alongside them.
+	var remap_path = source_path + ".remap"
+	if FileAccess.file_exists(remap_path):
+		var remap := ConfigFile.new()
+		if remap.load(remap_path) != OK:
+			return ""
+		var runtime_path = String(remap.get_value("remap", "path", ""))
+		if runtime_path != "":
+			if not runtime_path.begins_with("res://"):
+				return ""
+			var runtime_hash = _hash_file(runtime_path)
+			return "compiled:" + runtime_hash if runtime_hash != "" else ""
+		return ""
+
+	var source_hash = _hash_file(source_path)
+	if source_hash != "":
+		return "source:" + source_hash
+	return ""
+
+func _canonicalize(value: Variant) -> Variant:
+	if typeof(value) == TYPE_DICTIONARY:
+		var result = {}
+		var keys: Array = value.keys()
+		keys.sort()
+		for key in keys:
+			result[key] = _canonicalize(value[key])
+		return result
+	if typeof(value) == TYPE_ARRAY:
+		var result: Array = []
+		for item in value:
+			result.append(_canonicalize(item))
+		return result
+	return value
+
+func _ffmpeg_build_hash() -> String:
+	var output: Array = []
+	var code = OS.execute(ffmpeg.ffmpeg_bin, PackedStringArray(["-version"]), output, true)
+	if code != 0 or output.is_empty():
+		return ""
+	return _sha256_text("\n".join(output))
+
+func _is_safe_job_id(value: String) -> bool:
+	return _matches_id(value, "job_")
+
+func _is_safe_export_id(value: String) -> bool:
+	return _matches_id(value, "export_")
+
+func _matches_id(value: String, prefix: String) -> bool:
+	if not value.begins_with(prefix):
+		return false
+	var suffix = value.substr(prefix.length())
+	if suffix.length() != 16:
+		return false
+	for char in suffix:
+		if not ((char >= "a" and char <= "f") or (char >= "0" and char <= "9")):
+			return false
+	return true
+
+func _path_has_symlink_component(path: String) -> bool:
+	if not _symlink_inspection_supported():
+		return true
+	if path.strip_edges() == "":
+		return true
+	var raw_path = path
+	if OS.get_name() == "Windows":
+		raw_path = raw_path.replace("\\", "/")
+	for component in raw_path.split("/", false):
+		if component == "..":
+			return true
+	var absolute_path = raw_path.simplify_path()
+	if absolute_path.begins_with("res://") or absolute_path.begins_with("user://"):
+		absolute_path = ProjectSettings.globalize_path(absolute_path).simplify_path()
+	elif not absolute_path.is_absolute_path():
+		var cwd = DirAccess.open(".")
+		if cwd == null:
+			return true
+		absolute_path = cwd.get_current_dir().path_join(absolute_path).simplify_path()
+
+	var current = ""
+	var remainder = ""
+	if absolute_path.begins_with("//"):
+		return true
+	if absolute_path.begins_with("/"):
+		current = "/"
+		remainder = absolute_path.trim_prefix("/")
+	elif absolute_path.length() >= 3 and absolute_path.substr(1, 2) == ":/":
+		current = absolute_path.substr(0, 3)
+		remainder = absolute_path.substr(3)
+	else:
+		return true
+	for component in remainder.split("/", false):
+		var parent = DirAccess.open(current)
+		if parent == null:
+			return true
+		parent.include_hidden = true
+		if parent.list_dir_begin() != OK:
+			return true
+		var existing_component = ""
+		var case_alias_exists = false
+		while true:
+			var entry = parent.get_next()
+			if entry == "":
+				break
+			if entry == component:
+				existing_component = entry
+			elif entry.nocasecmp_to(component) == 0:
+				case_alias_exists = true
+		parent.list_dir_end()
+		if existing_component == "":
+			if case_alias_exists:
+				# The filesystem's case behavior is ambiguous; don't treat an alias as absent.
+				return true
+			var requested_path = current.path_join(component)
+			if parent.is_link(component) or DirAccess.dir_exists_absolute(requested_path) or FileAccess.file_exists(requested_path):
+				# The path resolves despite not matching an enumerated name; inspection is ambiguous.
+				return true
+			# The parent was opened and fully enumerated, confirming this is a prospective child.
+			return false
+		if parent.is_link(existing_component):
+			return true
+		current = current.path_join(existing_component)
+		if not DirAccess.dir_exists_absolute(current) and not FileAccess.file_exists(current):
+			# An enumerated entry must remain observable before we trust the next component.
+			return true
+	return false
+
+func _resolve_configured_output_path(configured_path: String, base_dir: String) -> String:
+	# Inspect the raw value first so simplification cannot hide a traversal
+	# component or an existing symlink from the fail-closed path guard.
+	if configured_path.strip_edges() == "" or _path_has_symlink_component(configured_path):
+		return ""
+	var resolved = configured_path
+	if resolved.begins_with("res://") or resolved.begins_with("user://"):
+		resolved = ProjectSettings.globalize_path(resolved)
+	elif not resolved.is_absolute_path():
+		resolved = base_dir.path_join(resolved)
+	resolved = resolved.simplify_path()
+	if not resolved.is_absolute_path() or _path_has_symlink_component(resolved):
+		return ""
+	return resolved
+
+func _symlink_inspection_supported() -> bool:
+	if _symlink_inspection_supported_override != null:
+		return bool(_symlink_inspection_supported_override)
+	return OS.get_name() in ["macOS", "Linux", "Windows"]
+
 func _hash_file(path: String) -> String:
 	var file = FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -486,7 +1296,9 @@ func _sha256_text(text: String) -> String:
 	return hash.finish().hex_encode()
 
 func _checkpoint_hash(video_path: String, fps: int, frame_index: int) -> String:
-	var tmp_png = String(paths.get("tmp_dir", "out/tmp")).path_join("checkpoint_%s_%d.png" % [VasIds.new_id("cp"), frame_index])
+	if not _configured_paths_safe:
+		return ""
+	var tmp_png = _tmp_dir.path_join("checkpoint_%s_%d.png" % [VasIds.new_id("cp"), frame_index])
 	var t = float(frame_index) / max(float(fps), 1.0)
 	var capture = ffmpeg.run(PackedStringArray([
 		"-y",

@@ -25,6 +25,9 @@ if rg -n "SCRIPT ERROR|Parse Error|Failed to load script|\[FAIL\]" "$PRODUCT_LOG
   exit 1
 fi
 
+# Same-job export recovery, locking, and finalized-bundle reconciliation.
+bash ./tests/phase1_resume.sh
+
 # Non-gating harness regression signal while product-path migration is underway.
 if [[ -x worker/.venv/bin/python ]]; then
   set +e
