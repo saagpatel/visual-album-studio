@@ -58,6 +58,8 @@ class FixtureAssets extends RefCounted:
 class FixtureFfmpeg extends RefCounted:
 	var ffmpeg_bin := "ffmpeg"
 	var fail_second_segment_once := true
+	var fail_concat_once := false
+	var fail_thumbnail_once := false
 	var segment_encodes: Dictionary = {}
 	var calls: Array[String] = []
 	var use_real_media := false
@@ -122,6 +124,12 @@ class FixtureFfmpeg extends RefCounted:
 			if segment_index == "001" and fail_second_segment_once:
 				fail_second_segment_once = false
 				return {"ok": false, "code": 1, "output": "synthetic interruption"}
+		if fail_concat_once and args.has("-f") and args.has("concat"):
+			fail_concat_once = false
+			return {"ok": false, "code": 1, "output": "synthetic concat failure"}
+		if fail_thumbnail_once and args.has("-vframes"):
+			fail_thumbnail_once = false
+			return {"ok": false, "code": 1, "output": "synthetic thumbnail failure"}
 		if use_real_media:
 			var output: Array = []
 			var code := OS.execute("ffmpeg", args, output, true)
@@ -352,9 +360,105 @@ func _run() -> int:
 
 	if not _run_abrupt_stop_control(fixture_root, project, analysis, template, db):
 		return 1
+	if not _run_post_render_failure_controls(fixture_root, project, analysis, template):
+		return 1
 
-	print("Phase 1 resume integration passed: interruption, same-job recovery, input mismatch, and segment tampering")
+	print("Phase 1 resume integration passed: interruption, same-job recovery, input mismatch, post-render failures, and segment tampering")
 	return 0
+
+func _run_post_render_failure_controls(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary) -> bool:
+	var paths := {
+		"root": fixture_root,
+		"out_dir": fixture_root.path_join("out"),
+		"tmp_dir": fixture_root.path_join("tmp"),
+		"exports_dir": fixture_root.path_join("exports"),
+	}
+	var concat_db := FixtureDb.new()
+	var concat_ffmpeg := FixtureFfmpeg.new()
+	concat_ffmpeg.fail_second_segment_once = false
+	concat_ffmpeg.fail_concat_once = true
+	var concat_exporter := ExportService.new(concat_db, paths, concat_ffmpeg, FixtureAssets.new())
+	var concat_failure := concat_exporter.export_project(project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(concat_failure.get("error", "")) == "E_FFMPEG_FAILED", "post-render concat failure must retain its error classification"):
+		print(concat_failure)
+		return false
+	var concat_details: Variant = concat_failure.get("details", {})
+	if not _assert(typeof(concat_details) == TYPE_DICTIONARY and int(concat_details.get("code", -1)) == 1 and String(concat_details.get("output", "")) == "synthetic concat failure", "concat failure must preserve nested FFmpeg details"):
+		print(concat_failure)
+		return false
+	var concat_job_id := String(concat_failure.get("job_id", ""))
+	var concat_export_id := String(concat_failure.get("export_id", ""))
+	if not _assert(concat_job_id != "" and concat_export_id != "", "concat failure must return both resumable job and export IDs"):
+		print(concat_failure)
+		return false
+	var concat_segment_calls := concat_ffmpeg.segment_encodes.duplicate(true)
+	var concat_resume := concat_exporter.resume_export(concat_job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(not concat_resume.has("error") and concat_resume.get("job_id", "") == concat_job_id and concat_resume.get("export_id", "") == concat_export_id, "concat failure must resume by returned job ID and preserve the export ID"):
+		print(concat_resume)
+		return false
+	if not _assert(concat_ffmpeg.segment_encodes == concat_segment_calls, "resume after concat failure must reuse every completed segment"):
+		return false
+	var thumbnail_db := FixtureDb.new()
+	var thumbnail_ffmpeg := FixtureFfmpeg.new()
+	thumbnail_ffmpeg.fail_second_segment_once = false
+	thumbnail_ffmpeg.fail_thumbnail_once = true
+	var thumbnail_exporter := ExportService.new(thumbnail_db, paths, thumbnail_ffmpeg, FixtureAssets.new())
+	var thumbnail_failure := thumbnail_exporter.export_project(project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(thumbnail_failure.get("error", "")) == "E_FFMPEG_FAILED", "post-render thumbnail failure must retain its error classification"):
+		print(thumbnail_failure)
+		return false
+	var thumbnail_details: Variant = thumbnail_failure.get("details", {})
+	if not _assert(typeof(thumbnail_details) == TYPE_DICTIONARY and int(thumbnail_details.get("code", -1)) == 1 and String(thumbnail_details.get("output", "")) == "synthetic thumbnail failure", "thumbnail failure must preserve nested FFmpeg details"):
+		print(thumbnail_failure)
+		return false
+	var thumbnail_job_id := String(thumbnail_failure.get("job_id", ""))
+	var thumbnail_export_id := String(thumbnail_failure.get("export_id", ""))
+	if not _assert(thumbnail_job_id != "" and thumbnail_export_id != "", "thumbnail failure must return both resumable job and export IDs"):
+		print(thumbnail_failure)
+		return false
+	var thumbnail_segment_calls := thumbnail_ffmpeg.segment_encodes.duplicate(true)
+	var thumbnail_resume := thumbnail_exporter.resume_export(thumbnail_job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(not thumbnail_resume.has("error") and thumbnail_resume.get("job_id", "") == thumbnail_job_id and thumbnail_resume.get("export_id", "") == thumbnail_export_id, "thumbnail failure must resume by returned job ID and preserve the export ID"):
+		print(thumbnail_resume)
+		return false
+	if not _assert(thumbnail_ffmpeg.segment_encodes == thumbnail_segment_calls, "resume after thumbnail failure must reuse every completed segment"):
+		return false
+
+	var bundle_db := FixtureDb.new()
+	var bundle_ffmpeg := FixtureFfmpeg.new()
+	bundle_ffmpeg.fail_second_segment_once = false
+	var bundle_exporter := ExportService.new(bundle_db, paths, bundle_ffmpeg, FixtureAssets.new())
+	var bundle_fault := {"triggered": false}
+	bundle_exporter._atomic_write_after_stage = func(temp_path: String) -> void:
+		if bundle_fault["triggered"] or not temp_path.get_file().begins_with("metadata.json."):
+			return
+		var staged_metadata := FileAccess.open(temp_path, FileAccess.WRITE)
+		if staged_metadata == null:
+			return
+		bundle_fault["triggered"] = true
+		staged_metadata.store_string("{")
+		staged_metadata.flush()
+		staged_metadata.close()
+	var bundle_failure := bundle_exporter.export_project(project, "fixture-audio", analysis, template, false, false)
+	bundle_exporter._atomic_write_after_stage = Callable()
+	if not _assert(bool(bundle_fault["triggered"]), "bundle staging control must truncate its owned staged metadata file"):
+		return false
+	if not _assert(String(bundle_failure.get("error", "")) == "E_BUNDLE_WRITE_FAILED", "bundle staging failure must retain its error classification"):
+		print(bundle_failure)
+		return false
+	var bundle_job_id := String(bundle_failure.get("job_id", ""))
+	var bundle_export_id := String(bundle_failure.get("export_id", ""))
+	if not _assert(bundle_job_id != "" and bundle_export_id != "", "bundle staging failure must return both resumable job and export IDs"):
+		print(bundle_failure)
+		return false
+	var bundle_segment_calls := bundle_ffmpeg.segment_encodes.duplicate(true)
+	var bundle_resume := bundle_exporter.resume_export(bundle_job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(not bundle_resume.has("error") and bundle_resume.get("job_id", "") == bundle_job_id and bundle_resume.get("export_id", "") == bundle_export_id, "bundle staging failure must resume by returned job ID and preserve the export ID"):
+		print(bundle_resume)
+		return false
+	if not _assert(bundle_ffmpeg.segment_encodes == bundle_segment_calls, "resume after bundle staging failure must reuse every completed segment"):
+		return false
+	return true
 
 func _run_abrupt_stop_control(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary, db: FixtureDb) -> bool:
 	var use_real_media := OS.get_environment("VAS_RESUME_USE_REAL_FFMPEG") == "1"

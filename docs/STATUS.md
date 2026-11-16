@@ -755,6 +755,7 @@
 ### Review and hosted-gate follow-up — 2026-11-16
 - The first signed review requested changes: simulation mode was missing from the resume binding, and staged manifest writes were promoted without checking write errors and readback. The follow-up adds mode binding and checks the complete staged bytes before promotion; regression fixtures cover both mode changes and a truncated staged file.
 - The initial hosted quality run failed its dependency audit on outdated seeded `setuptools`; another job encountered a media-tool download failure. The audit also exposed missing `rg` on hosted runners. These failures are retained as history; setup now upgrades the disposable tooling, installs the required scanner, and fails closed if the scanner is unavailable.
+- A second signed review requested that every post-manifest failure return the established job and export IDs. The follow-up propagates those IDs and exercises recovery after concat, thumbnail, and bundle-staging failures without re-encoding completed segments. A new signed review is required for the repaired head.
 
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.

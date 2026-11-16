@@ -135,15 +135,15 @@ func _run_export(
 		var stored: Dictionary = stored_value
 		if String(stored.get("job_id", "")) != job_id or not _is_safe_export_id(String(stored.get("export_id", ""))):
 			return {"error": "E_RESUME_INVALID_JOB", "message": "Export job identity is invalid", "job_id": job_id}
-		if String(stored.get("resume_binding", "")) == "" or String(stored.get("resume_binding", "")) != binding:
-			return {"error": "E_RESUME_INPUT_MISMATCH", "message": "Export inputs or toolchain differ from the original job", "job_id": job_id}
 		export_id = String(stored.get("export_id", ""))
+		if String(stored.get("resume_binding", "")) == "" or String(stored.get("resume_binding", "")) != binding:
+			return _with_export_context({"error": "E_RESUME_INPUT_MISMATCH", "message": "Export inputs or toolchain differ from the original job"}, job_id, export_id)
 	else:
 		export_id = VasIds.new_id("export")
 	var bundle_tmp = exports_dir.path_join("%s.tmp.%s" % [export_id, VasIds.new_id("stage")])
 	var bundle_dir = exports_dir.path_join(export_id)
 	if _path_has_symlink_component(bundle_tmp) or _path_has_symlink_component(bundle_dir):
-		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Export bundle path contains a symlink", "job_id": job_id}
+		return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Export bundle path contains a symlink"}, job_id, export_id)
 	for output_path in [
 		bundle_tmp.path_join("video.mp4"), bundle_tmp.path_join("thumbnail.png"),
 		bundle_tmp.path_join("metadata.json"), bundle_tmp.path_join("provenance.json"),
@@ -151,12 +151,12 @@ func _run_export(
 		final_dir.path_join("thumbnail.png"),
 	]:
 		if _path_has_symlink_component(output_path):
-			return {"error": "E_RESUME_UNSAFE_PATH", "message": "Export output path contains a symlink", "job_id": job_id}
+			return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Export output path contains a symlink"}, job_id, export_id)
 	if resume_existing and DirAccess.dir_exists_absolute(bundle_dir):
 		if not _is_complete_bundle(bundle_dir, export_id, String(project.get("id", "")), job_manifest_path, binding):
-			return {"error": "E_RESUME_BUNDLE_INCOMPLETE", "message": "Finalized export directory is incomplete or does not match this job", "job_id": job_id, "export_id": export_id}
+			return _with_export_context({"error": "E_RESUME_BUNDLE_INCOMPLETE", "message": "Finalized export directory is incomplete or does not match this job"}, job_id, export_id)
 		if not _register_export(export_id, job_id, String(project.get("id", "")), bundle_dir):
-			return {"error": "E_EXPORT_REGISTRATION_FAILED", "message": "Could not reconcile the finalized export record", "job_id": job_id, "export_id": export_id}
+			return _with_export_context({"error": "E_EXPORT_REGISTRATION_FAILED", "message": "Could not reconcile the finalized export record"}, job_id, export_id)
 		return {"export_id": export_id, "job_id": job_id, "bundle_dir": bundle_dir, "segments": segments}
 	for p in [workspace, seg_dir, concat_dir, final_dir, bundle_tmp]:
 		DirAccess.make_dir_recursive_absolute(p)
@@ -173,7 +173,7 @@ func _run_export(
 			"created_at": int(Time.get_unix_time_from_system()),
 		})
 		if not manifest_write:
-			return {"error": "E_JOB_MANIFEST_WRITE_FAILED", "message": "Could not persist export job manifest", "job_id": job_id}
+			return _with_export_context({"error": "E_JOB_MANIFEST_WRITE_FAILED", "message": "Could not persist export job manifest"}, job_id, export_id)
 	var seg_mp4s: Array[String] = []
 	var encoder = ffmpeg.preferred_h264_encoder()
 
@@ -183,12 +183,12 @@ func _run_export(
 			var idx = int(segment.get("index", 0))
 			var seg_path = seg_dir.path_join("%03d" % idx)
 			if _path_has_symlink_component(seg_path):
-				return {"error": "E_RESUME_UNSAFE_PATH", "message": "Segment path contains a symlink", "job_id": job_id, "export_id": export_id}
+				return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Segment path contains a symlink"}, job_id, export_id)
 			var frames_path = seg_path.path_join("frames")
 			var seg_mp4 = seg_path.path_join("segment.mp4")
 			var seg_manifest_path = seg_path.path_join("segment.manifest.json")
 			if _path_has_symlink_component(frames_path) or _path_has_symlink_component(seg_mp4) or _path_has_symlink_component(seg_manifest_path) or _path_has_symlink_component(concat_list_path):
-				return {"error": "E_RESUME_UNSAFE_PATH", "message": "Segment artifact path contains a symlink", "job_id": job_id, "export_id": export_id}
+				return _with_export_context({"error": "E_RESUME_UNSAFE_PATH", "message": "Segment artifact path contains a symlink"}, job_id, export_id)
 			DirAccess.make_dir_recursive_absolute(seg_path)
 
 			var reuse_ok = _segment_is_reusable(seg_mp4, seg_manifest_path, segment)
@@ -217,17 +217,15 @@ func _run_export(
 					partial_mp4,
 				]))
 				if not encode["ok"] or not FileAccess.file_exists(partial_mp4) or _hash_file(partial_mp4) == "":
-					return {
+					return _with_export_context({
 						"error": "E_FFMPEG_FAILED",
 						"message": "Segment encode failed",
 						"details": encode,
-						"job_id": job_id,
-						"export_id": export_id,
-					}
+					}, job_id, export_id)
 				var seg_hash = _hash_file(partial_mp4)
 				var promote_err = DirAccess.rename_absolute(partial_mp4, seg_mp4)
 				if promote_err != OK:
-					return {"error": "E_SEGMENT_PROMOTE_FAILED", "message": "Could not promote completed segment", "job_id": job_id, "export_id": export_id}
+					return _with_export_context({"error": "E_SEGMENT_PROMOTE_FAILED", "message": "Could not promote completed segment"}, job_id, export_id)
 				if not _write_json_atomic(seg_manifest_path, {
 					"index": idx,
 					"start_frame": int(segment.get("start_frame", 0)),
@@ -235,7 +233,7 @@ func _run_export(
 					"sha256": seg_hash,
 				}):
 					DirAccess.remove_absolute(seg_mp4)
-					return {"error": "E_SEGMENT_MANIFEST_WRITE_FAILED", "message": "Could not persist completed segment manifest", "job_id": job_id, "export_id": export_id}
+					return _with_export_context({"error": "E_SEGMENT_MANIFEST_WRITE_FAILED", "message": "Could not persist completed segment manifest"}, job_id, export_id)
 				_safe_remove_tree(frames_path)
 
 			seg_mp4s.append(seg_mp4)
@@ -258,11 +256,11 @@ func _run_export(
 			final_video,
 		]))
 		if not concat_res["ok"]:
-			return {
+			return _with_export_context({
 				"error": "E_FFMPEG_FAILED",
 				"message": "Segment concat failed",
 				"details": concat_res,
-			}
+			}, job_id, export_id)
 
 		var thumb = final_dir.path_join("thumbnail.png")
 		var thumb_res = ffmpeg.run(PackedStringArray([
@@ -274,11 +272,11 @@ func _run_export(
 			thumb,
 		]))
 		if not thumb_res["ok"]:
-			return {
+			return _with_export_context({
 				"error": "E_FFMPEG_FAILED",
 				"message": "Thumbnail generation failed",
 				"details": thumb_res,
-			}
+			}, job_id, export_id)
 
 		if _file_size(thumb) > 2_000_000:
 			ffmpeg.run(PackedStringArray([
@@ -318,7 +316,7 @@ func _run_export(
 			binding,
 		)
 		if not export_files["ok"]:
-			return export_files
+			return _with_export_context(export_files, job_id, export_id)
 	else:
 		var final_video = final_dir.path_join("video.mp4")
 		var thumb = final_dir.path_join("thumbnail.png")
@@ -351,10 +349,10 @@ func _run_export(
 			binding,
 		)
 		if not export_files["ok"]:
-			return export_files
+			return _with_export_context(export_files, job_id, export_id)
 
 	if not _register_export(export_id, job_id, String(project.get("id", "")), bundle_dir):
-		return {"error": "E_EXPORT_REGISTRATION_FAILED", "message": "Could not register the finalized export", "job_id": job_id, "export_id": export_id}
+		return _with_export_context({"error": "E_EXPORT_REGISTRATION_FAILED", "message": "Could not register the finalized export"}, job_id, export_id)
 
 	return {
 		"export_id": export_id,
@@ -362,6 +360,13 @@ func _run_export(
 		"bundle_dir": bundle_dir,
 		"segments": segments,
 	}
+
+func _with_export_context(result: Dictionary, job_id: String, export_id: String) -> Dictionary:
+	var contextual = result.duplicate(true)
+	contextual["job_id"] = job_id
+	if export_id != "":
+		contextual["export_id"] = export_id
+	return contextual
 
 func _acquire_job_lock(job_id: String) -> Dictionary:
 	var jobs_root = String(paths.get("tmp_dir", "out/tmp")).path_join("jobs")
