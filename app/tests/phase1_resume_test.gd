@@ -239,6 +239,96 @@ func _run() -> int:
 		return 1
 	if not _assert(not FileAccess.file_exists(truncated_temp_path), "failed atomic write must remove the rejected temporary file"):
 		return 1
+	var journal_fixture_dir := fixture_root.path_join("tmp/atomic_job_manifest")
+	DirAccess.make_dir_recursive_absolute(journal_fixture_dir)
+	var journal_manifest_path := journal_fixture_dir.path_join("job_manifest.json")
+	var prior_job_manifest := {
+		"schema_version": 2,
+		"job_id": "job_0123456789abcdef",
+		"export_id": "export_fedcba9876543210",
+		"resume_binding": "fixture-prior-binding",
+	}
+	if not _assert(exporter._write_job_manifest_atomic(journal_manifest_path, prior_job_manifest, false), "initial job manifest write must create an absent owned destination"):
+		return 1
+	var prior_job_manifest_bytes := FileAccess.get_file_as_string(journal_manifest_path).to_utf8_buffer()
+	var install_failure_state := {"called": false, "destination_absent": false, "previous_matches": false, "journal_exists": false, "temporary_exists": false}
+	exporter._job_manifest_install_override = func(temporary_path: String, manifest_path: String) -> int:
+		install_failure_state["called"] = manifest_path == journal_manifest_path
+		install_failure_state["destination_absent"] = not FileAccess.file_exists(manifest_path)
+		install_failure_state["previous_matches"] = FileAccess.get_file_as_string(manifest_path + ".previous").to_utf8_buffer() == prior_job_manifest_bytes
+		install_failure_state["journal_exists"] = FileAccess.file_exists(manifest_path + ".replace-journal")
+		install_failure_state["temporary_exists"] = FileAccess.file_exists(temporary_path)
+		return ERR_CANT_CREATE
+	var replacement_result := exporter._write_job_manifest_atomic(journal_manifest_path, {
+		"schema_version": 2,
+		"job_id": "job_0123456789abcdef",
+		"export_id": "export_fedcba9876543210",
+		"resume_binding": "fixture-replacement-binding",
+	}, true)
+	exporter._job_manifest_install_override = Callable()
+	if not _assert(bool(install_failure_state["called"]) and bool(install_failure_state["destination_absent"]) and bool(install_failure_state["previous_matches"]) and bool(install_failure_state["journal_exists"]) and bool(install_failure_state["temporary_exists"]), "replacement fault must occur only after backup, journal, and verified stage exist and the old primary is removed"):
+		return 1
+	if not _assert(not replacement_result, "failed replacement install must report false"):
+		return 1
+	var restored_job_manifest_bytes := FileAccess.get_file_as_string(journal_manifest_path).to_utf8_buffer()
+	if not _assert(restored_job_manifest_bytes == prior_job_manifest_bytes, "failed job manifest replacement must restore the exact prior bytes"):
+		return 1
+	var restored_job_manifest: Variant = JSON.parse_string(restored_job_manifest_bytes.get_string_from_utf8())
+	if not _assert(typeof(restored_job_manifest) == TYPE_DICTIONARY and String(restored_job_manifest.get("resume_binding", "")) == "fixture-prior-binding", "failed replacement must leave the prior manifest valid"):
+		return 1
+	if not _assert(not FileAccess.file_exists(journal_manifest_path + ".previous") and not FileAccess.file_exists(journal_manifest_path + ".replace-journal"), "recovery must clean the previous manifest and replacement journal"):
+		return 1
+	var replacement_dir := DirAccess.open(journal_fixture_dir)
+	if not _assert(replacement_dir != null, "replacement fixture directory must remain readable for cleanup verification"):
+		return 1
+	replacement_dir.list_dir_begin()
+	var replacement_entry := replacement_dir.get_next()
+	var leftover_replacement := false
+	while replacement_entry != "":
+		if replacement_entry.begins_with("job_manifest.json."):
+			leftover_replacement = true
+			replacement_entry = replacement_dir.get_next()
+			continue
+		replacement_entry = replacement_dir.get_next()
+	replacement_dir.list_dir_end()
+	if not _assert(not leftover_replacement, "recovery must remove staged replacement and journal temporary files"):
+		return 1
+	var interrupted_manifest_path := journal_fixture_dir.path_join("interrupted/job_manifest.json")
+	var interrupted_state := _prepare_job_manifest_recovery_fixture(exporter, interrupted_manifest_path, "missing")
+	if not _assert(bool(interrupted_state.get("ok", false)), "test must prepare an owned interrupted replacement with missing primary"):
+		return 1
+	if not _assert(exporter._recover_job_manifest(interrupted_manifest_path), "recovery must restore the prior job manifest after interruption with a missing primary"):
+		return 1
+	var interrupted_prior_bytes: PackedByteArray = interrupted_state.get("previous_bytes", PackedByteArray())
+	if not _assert(FileAccess.get_file_as_string(interrupted_manifest_path).to_utf8_buffer() == interrupted_prior_bytes, "interrupted recovery must restore the exact prior manifest bytes"):
+		return 1
+	if not _assert(not FileAccess.file_exists(interrupted_manifest_path + ".previous") and not FileAccess.file_exists(interrupted_manifest_path + ".replace-journal") and not FileAccess.file_exists(String(interrupted_state.get("temporary_path", ""))), "interrupted recovery must clean its owned journal, previous, and replacement files"):
+		return 1
+	var malformed_manifest_path := journal_fixture_dir.path_join("malformed/job_manifest.json")
+	var malformed_state := _prepare_job_manifest_recovery_fixture(exporter, malformed_manifest_path, "malformed")
+	if not _assert(bool(malformed_state.get("ok", false)), "test must prepare an owned malformed-primary recovery state"):
+		return 1
+	var malformed_primary_before := FileAccess.get_file_as_string(malformed_manifest_path).to_utf8_buffer()
+	var malformed_previous_before := FileAccess.get_file_as_string(malformed_manifest_path + ".previous").to_utf8_buffer()
+	var malformed_journal_before := FileAccess.get_file_as_string(malformed_manifest_path + ".replace-journal").to_utf8_buffer()
+	var malformed_temp_path := String(malformed_state.get("temporary_path", ""))
+	var malformed_temporary_before := FileAccess.get_file_as_string(malformed_temp_path).to_utf8_buffer()
+	if not _assert(not exporter._recover_job_manifest(malformed_manifest_path), "recovery must fail closed on an unknown malformed primary manifest"):
+		return 1
+	if not _assert(FileAccess.get_file_as_string(malformed_manifest_path).to_utf8_buffer() == malformed_primary_before and FileAccess.get_file_as_string(malformed_manifest_path + ".previous").to_utf8_buffer() == malformed_previous_before and FileAccess.get_file_as_string(malformed_manifest_path + ".replace-journal").to_utf8_buffer() == malformed_journal_before and FileAccess.get_file_as_string(malformed_temp_path).to_utf8_buffer() == malformed_temporary_before, "failed-closed recovery must preserve the malformed primary and every owned journal artifact byte-for-byte"):
+		return 1
+	for primary_state in ["previous", "replacement"]:
+		var matching_primary_path := journal_fixture_dir.path_join(primary_state + "/job_manifest.json")
+		var matching_state := _prepare_job_manifest_recovery_fixture(exporter, matching_primary_path, primary_state)
+		if not _assert(bool(matching_state.get("ok", false)), "test must prepare an owned journal state with a recognized primary"):
+			return 1
+		var expected_primary_bytes: PackedByteArray = matching_state.get("primary_bytes", PackedByteArray())
+		if not _assert(exporter._recover_job_manifest(matching_primary_path), "recovery must accept a primary matching the journal's " + primary_state + " hash"):
+			return 1
+		if not _assert(FileAccess.get_file_as_string(matching_primary_path).to_utf8_buffer() == expected_primary_bytes, "recovery must preserve the recognized " + primary_state + " primary byte-for-byte"):
+			return 1
+		if not _assert(not FileAccess.file_exists(matching_primary_path + ".previous") and not FileAccess.file_exists(matching_primary_path + ".replace-journal") and not FileAccess.file_exists(String(matching_state.get("temporary_path", ""))), "recognized-primary recovery must clean only its owned journal artifacts"):
+			return 1
 	var simulated := exporter.export_project(project, "fixture-audio", analysis, template, false, true)
 	if not _assert(not simulated.has("error"), "simulated export must finalize in its synthetic fixture"):
 		print(simulated)
@@ -461,6 +551,73 @@ func _run_post_render_failure_controls(fixture_root: String, project: Dictionary
 	if not _assert(bundle_ffmpeg.segment_encodes == bundle_segment_calls, "resume after bundle staging failure must reuse every completed segment"):
 		return false
 	return true
+
+func _prepare_job_manifest_recovery_fixture(exporter: RefCounted, manifest_path: String, primary_state: String) -> Dictionary:
+	DirAccess.make_dir_recursive_absolute(manifest_path.get_base_dir())
+	var previous_payload := {
+		"schema_version": 2,
+		"job_id": "job_0123456789abcdef",
+		"export_id": "export_fedcba9876543210",
+		"resume_binding": "fixture-recovery-prior-binding",
+	}
+	var replacement_payload := {
+		"schema_version": 2,
+		"job_id": "job_0123456789abcdef",
+		"export_id": "export_fedcba9876543210",
+		"resume_binding": "fixture-recovery-next-binding",
+	}
+	if not exporter._write_job_manifest_atomic(manifest_path, previous_payload, false):
+		return {"ok": false}
+	var previous_bytes := FileAccess.get_file_as_string(manifest_path).to_utf8_buffer()
+	var previous_path := manifest_path + ".previous"
+	var journal_path := manifest_path + ".replace-journal"
+	if _write_fixture_bytes(previous_path, previous_bytes) != OK:
+		return {"ok": false}
+	var temporary_path := manifest_path + ".replace_0123456789abcdef.replacement.partial"
+	var replacement_bytes := JSON.stringify(replacement_payload, "\t").to_utf8_buffer()
+	if _write_fixture_bytes(temporary_path, replacement_bytes) != OK:
+		return {"ok": false}
+	var journal := {
+		"schema_version": 1,
+		"destination": "job_manifest.json",
+		"transaction_id": "replace_0123456789abcdef",
+		"temporary": temporary_path.get_file(),
+		"previous": previous_path.get_file(),
+		"previous_sha256": exporter._sha256_bytes(previous_bytes),
+		"replacement_sha256": exporter._sha256_bytes(replacement_bytes),
+	}
+	var journal_bytes := JSON.stringify(journal, "\t").to_utf8_buffer()
+	if _write_fixture_bytes(journal_path, journal_bytes) != OK:
+		return {"ok": false}
+	var primary_bytes := PackedByteArray()
+	if primary_state == "malformed":
+		if _write_fixture_bytes(manifest_path, "{malformed primary".to_utf8_buffer()) != OK:
+			return {"ok": false}
+		primary_bytes = "{malformed primary".to_utf8_buffer()
+	elif primary_state == "missing":
+		if DirAccess.remove_absolute(manifest_path) != OK:
+			return {"ok": false}
+	elif primary_state == "previous":
+		primary_bytes = previous_bytes
+		if _write_fixture_bytes(manifest_path, primary_bytes) != OK:
+			return {"ok": false}
+	elif primary_state == "replacement":
+		primary_bytes = replacement_bytes
+		if _write_fixture_bytes(manifest_path, primary_bytes) != OK:
+			return {"ok": false}
+	else:
+		return {"ok": false}
+	return {"ok": true, "previous_bytes": previous_bytes, "primary_bytes": primary_bytes, "temporary_path": temporary_path}
+
+func _write_fixture_bytes(path: String, bytes: PackedByteArray) -> int:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return ERR_CANT_CREATE
+	file.store_buffer(bytes)
+	file.flush()
+	var result := file.get_error()
+	file.close()
+	return result
 
 func _run_symlink_guard_controls(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary) -> bool:
 	var paths := {

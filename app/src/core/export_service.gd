@@ -9,6 +9,7 @@ var ffmpeg
 var asset_service
 var _atomic_write_after_stage: Callable
 var _symlink_inspection_supported_override: Variant = null
+var _job_manifest_install_override: Callable
 
 func _init(p_db = null, p_paths: Dictionary = {}, p_ffmpeg = null, p_asset_service = null) -> void:
 	db = p_db
@@ -128,6 +129,8 @@ func _run_export(
 	if _path_has_symlink_component(job_manifest_path):
 		return {"error": "E_RESUME_UNSAFE_PATH", "message": "Job manifest path contains a symlink", "job_id": job_id}
 	if resume_existing:
+		if not _recover_job_manifest(job_manifest_path):
+			return {"error": "E_JOB_MANIFEST_RECOVERY_FAILED", "message": "Could not safely recover the prior job manifest", "job_id": job_id}
 		if not FileAccess.file_exists(job_manifest_path):
 			return {"error": "E_RESUME_JOB_NOT_FOUND", "message": "Export job manifest is missing", "job_id": job_id}
 		var stored_value: Variant = JSON.parse_string(FileAccess.get_file_as_string(job_manifest_path))
@@ -162,7 +165,7 @@ func _run_export(
 	for p in [workspace, seg_dir, concat_dir, final_dir, bundle_tmp]:
 		DirAccess.make_dir_recursive_absolute(p)
 	if not resume_existing:
-		var manifest_write = _write_json_atomic(job_manifest_path, {
+		var manifest_write = _write_job_manifest_atomic(job_manifest_path, {
 			"schema_version": 2,
 			"job_id": job_id,
 			"project_id": project.get("id", ""),
@@ -172,7 +175,7 @@ func _run_export(
 			"resolution": [width, height],
 			"resume_binding": binding,
 			"created_at": int(Time.get_unix_time_from_system()),
-		})
+		}, false)
 		if not manifest_write:
 			return _with_export_context({"error": "E_JOB_MANIFEST_WRITE_FAILED", "message": "Could not persist export job manifest"}, job_id, export_id)
 	var seg_mp4s: Array[String] = []
@@ -469,6 +472,8 @@ func _is_complete_bundle(bundle_dir: String, export_id: String, project_id: Stri
 	var snapshot: Dictionary = snapshot_value
 	if String(snapshot.get("export_id", "")) != export_id or String(snapshot.get("project_id", "")) != project_id:
 		return false
+	if not _recover_job_manifest(job_manifest_path):
+		return false
 	var job_manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(job_manifest_path))
 	if typeof(job_manifest) != TYPE_DICTIONARY:
 		return false
@@ -597,6 +602,8 @@ func _finalize_bundle(
 	hashes["build_manifest.json"] = _hash_file(bundle_tmp.path_join("build_manifest.json"))
 	if hashes["build_manifest.json"] == "":
 		return {"ok": false, "error": "E_BUNDLE_WRITE_FAILED", "message": "Could not hash build manifest"}
+	if not _recover_job_manifest(job_manifest_path):
+		return {"ok": false, "error": "E_JOB_MANIFEST_RECOVERY_FAILED", "message": "Could not safely recover the prior job manifest"}
 	var job_manifest: Variant = JSON.parse_string(FileAccess.get_file_as_string(job_manifest_path))
 	if typeof(job_manifest) != TYPE_DICTIONARY or String(job_manifest.get("resume_binding", "")) != binding:
 		return {"ok": false, "error": "E_JOB_MANIFEST_INVALID", "message": "Job manifest changed before bundle publication"}
@@ -606,7 +613,7 @@ func _finalize_bundle(
 		"resume_binding": binding,
 		"files": hashes,
 	}
-	if not _write_json_atomic(job_manifest_path, job_manifest):
+	if not _write_job_manifest_atomic(job_manifest_path, job_manifest, true):
 		return {"ok": false, "error": "E_JOB_MANIFEST_WRITE_FAILED", "message": "Could not persist bundle integrity receipt"}
 
 	if DirAccess.dir_exists_absolute(bundle_dir):
@@ -746,6 +753,299 @@ func _write_json_atomic(path: String, payload: Dictionary) -> bool:
 		DirAccess.remove_absolute(temporary_path)
 		return false
 	return true
+
+func _write_job_manifest_atomic(path: String, payload: Dictionary, allow_replace: bool = false) -> bool:
+	if not path.is_absolute_path() or path.get_file() != "job_manifest.json":
+		return false
+	if not _recover_job_manifest(path):
+		return false
+	var primary_state = _manifest_path_state(path)
+	if primary_state == "unknown" or (allow_replace and primary_state != "present") or (not allow_replace and primary_state != "absent"):
+		return false
+	var serialized = JSON.stringify(payload, "\t")
+	var new_bytes = serialized.to_utf8_buffer()
+	if not _is_valid_job_manifest_bytes(new_bytes):
+		return false
+	var transaction_id = VasIds.new_id("replace")
+	var temporary_path = path + ".%s.replacement.partial" % transaction_id
+	if not _write_new_file_exact(temporary_path, new_bytes):
+		return false
+	if primary_state == "absent":
+		if _manifest_path_state(path) != "absent" or DirAccess.rename_absolute(temporary_path, path) != OK:
+			_remove_manifest_artifact(temporary_path)
+			return false
+		var created = _read_file_bytes_exact(path)
+		return bool(created.get("ok", false)) and created.get("bytes", PackedByteArray()) == new_bytes
+
+	var old_read = _read_file_bytes_exact(path)
+	if not bool(old_read.get("ok", false)):
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var old_bytes: PackedByteArray = old_read.get("bytes", PackedByteArray())
+	if not _is_valid_job_manifest_bytes(old_bytes):
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var previous_path = _job_manifest_previous_path(path)
+	var journal_path = _job_manifest_journal_path(path)
+	if _manifest_path_state(previous_path) != "absent" or _manifest_path_state(journal_path) != "absent":
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var previous_temporary_path = previous_path + ".%s.partial" % transaction_id
+	if not _write_new_file_exact(previous_temporary_path, old_bytes):
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var staged_previous = _read_file_bytes_exact(previous_temporary_path)
+	if not bool(staged_previous.get("ok", false)) or staged_previous.get("bytes", PackedByteArray()) != old_bytes:
+		_remove_manifest_artifact(temporary_path)
+		return false
+	if _manifest_path_state(previous_path) != "absent" or DirAccess.rename_absolute(previous_temporary_path, previous_path) != OK:
+		_remove_manifest_artifact(temporary_path)
+		return false
+	var previous_read = _read_file_bytes_exact(previous_path)
+	if not bool(previous_read.get("ok", false)) or previous_read.get("bytes", PackedByteArray()) != old_bytes:
+		return false
+	var journal = {
+		"schema_version": 1,
+		"destination": path.get_file(),
+		"transaction_id": transaction_id,
+		"temporary": temporary_path.get_file(),
+		"previous": previous_path.get_file(),
+		"previous_sha256": _sha256_bytes(old_bytes),
+		"replacement_sha256": _sha256_bytes(new_bytes),
+	}
+	var journal_bytes = JSON.stringify(journal, "\t").to_utf8_buffer()
+	var journal_temporary_path = journal_path + ".%s.partial" % transaction_id
+	if not _write_new_file_exact(journal_temporary_path, journal_bytes):
+		_remove_manifest_artifact(temporary_path)
+		_remove_manifest_artifact(previous_path)
+		return false
+	if _manifest_path_state(journal_path) != "absent" or DirAccess.rename_absolute(journal_temporary_path, journal_path) != OK:
+		_remove_manifest_artifact(journal_temporary_path)
+		_remove_manifest_artifact(temporary_path)
+		_remove_manifest_artifact(previous_path)
+		return false
+	var published_journal = _read_file_bytes_exact(journal_path)
+	if not bool(published_journal.get("ok", false)) or published_journal.get("bytes", PackedByteArray()) != journal_bytes:
+		return false
+	var old_still_current = _read_file_bytes_exact(path)
+	if not bool(old_still_current.get("ok", false)) or old_still_current.get("bytes", PackedByteArray()) != old_bytes:
+		return false
+	if DirAccess.remove_absolute(path) != OK:
+		_recover_job_manifest(path)
+		return false
+	var install_error = OK
+	if _job_manifest_install_override.is_valid():
+		install_error = int(_job_manifest_install_override.call(temporary_path, path))
+	else:
+		install_error = DirAccess.rename_absolute(temporary_path, path)
+	if install_error != OK:
+		_recover_job_manifest(path)
+		return false
+	var installed = _read_file_bytes_exact(path)
+	if not bool(installed.get("ok", false)) or installed.get("bytes", PackedByteArray()) != new_bytes:
+		_recover_job_manifest(path)
+		return false
+	return _recover_job_manifest(path)
+
+func _recover_job_manifest(path: String) -> bool:
+	if not path.is_absolute_path() or path.get_file() != "job_manifest.json":
+		return false
+	if _path_has_symlink_component(path):
+		return false
+	var journal_path = _job_manifest_journal_path(path)
+	var previous_path = _job_manifest_previous_path(path)
+	var journal_state = _manifest_path_state(journal_path)
+	if journal_state == "unknown":
+		return false
+	if journal_state == "absent":
+		return _recover_orphan_job_manifest_previous(path, previous_path)
+	var journal_read = _read_file_bytes_exact(journal_path)
+	if not bool(journal_read.get("ok", false)):
+		return false
+	var journal_bytes: PackedByteArray = journal_read.get("bytes", PackedByteArray())
+	var journal_value: Variant = JSON.parse_string(journal_bytes.get_string_from_utf8())
+	if typeof(journal_value) != TYPE_DICTIONARY:
+		return false
+	var journal: Dictionary = journal_value
+	var transaction_id = String(journal.get("transaction_id", ""))
+	var expected_temporary_name = "%s.%s.replacement.partial" % [path.get_file(), transaction_id]
+	if int(journal.get("schema_version", 0)) != 1 or String(journal.get("destination", "")) != path.get_file():
+		return false
+	if not _matches_id(transaction_id, "replace_") or String(journal.get("temporary", "")) != expected_temporary_name or String(journal.get("previous", "")) != previous_path.get_file():
+		return false
+	var previous_hash = String(journal.get("previous_sha256", ""))
+	var replacement_hash = String(journal.get("replacement_sha256", ""))
+	if not _is_sha256_hex(previous_hash) or not _is_sha256_hex(replacement_hash):
+		return false
+	var temporary_path = path.get_base_dir().path_join(expected_temporary_name)
+	var primary_state = _manifest_path_state(path)
+	if primary_state == "unknown":
+		return false
+	if primary_state == "present":
+		var primary_read = _read_file_bytes_exact(path)
+		if not bool(primary_read.get("ok", false)):
+			return false
+		var primary_bytes: PackedByteArray = primary_read.get("bytes", PackedByteArray())
+		var primary_hash = _sha256_bytes(primary_bytes)
+		if primary_hash != previous_hash and primary_hash != replacement_hash:
+			return false
+		if not _is_valid_job_manifest_bytes(primary_bytes):
+			return false
+		return _cleanup_job_manifest_transaction(temporary_path, previous_path, journal_path, previous_hash, replacement_hash)
+	if _manifest_path_state(previous_path) != "present":
+		return false
+	var backup_read = _read_file_bytes_exact(previous_path)
+	if not bool(backup_read.get("ok", false)):
+		return false
+	var backup_bytes: PackedByteArray = backup_read.get("bytes", PackedByteArray())
+	if _sha256_bytes(backup_bytes) != previous_hash or not _is_valid_job_manifest_bytes(backup_bytes):
+		return false
+	var restore_attempt_id = VasIds.new_id("restore")
+	var restore_temporary_path = path + ".%s.restore.partial" % restore_attempt_id
+	if not _write_new_file_exact(restore_temporary_path, backup_bytes):
+		return false
+	var staged_restore = _read_file_bytes_exact(restore_temporary_path)
+	if not bool(staged_restore.get("ok", false)) or staged_restore.get("bytes", PackedByteArray()) != backup_bytes:
+		return false
+	if _manifest_path_state(path) != "absent" or DirAccess.rename_absolute(restore_temporary_path, path) != OK:
+		return false
+	var restored = _read_file_bytes_exact(path)
+	if not bool(restored.get("ok", false)) or restored.get("bytes", PackedByteArray()) != backup_bytes:
+		return false
+	return _cleanup_job_manifest_transaction(temporary_path, previous_path, journal_path, previous_hash, replacement_hash)
+
+func _recover_orphan_job_manifest_previous(path: String, previous_path: String) -> bool:
+	var previous_state = _manifest_path_state(previous_path)
+	if previous_state == "absent":
+		return true
+	if previous_state != "present" or _manifest_path_state(path) != "present":
+		return false
+	var primary = _read_file_bytes_exact(path)
+	var previous = _read_file_bytes_exact(previous_path)
+	if not bool(primary.get("ok", false)) or not bool(previous.get("ok", false)):
+		return false
+	var primary_bytes: PackedByteArray = primary.get("bytes", PackedByteArray())
+	var previous_bytes: PackedByteArray = previous.get("bytes", PackedByteArray())
+	if primary_bytes != previous_bytes or not _is_valid_job_manifest_bytes(primary_bytes):
+		return false
+	return _remove_manifest_artifact(previous_path)
+
+func _cleanup_job_manifest_transaction(temporary_path: String, previous_path: String, journal_path: String, previous_hash: String, replacement_hash: String) -> bool:
+	var temporary_state = _manifest_path_state(temporary_path)
+	if temporary_state == "unknown":
+		return false
+	if temporary_state == "present":
+		var temporary_read = _read_file_bytes_exact(temporary_path)
+		if not bool(temporary_read.get("ok", false)) or _sha256_bytes(temporary_read.get("bytes", PackedByteArray())) != replacement_hash:
+			return false
+	var previous_state = _manifest_path_state(previous_path)
+	if previous_state == "unknown":
+		return false
+	if previous_state == "present":
+		var previous_read = _read_file_bytes_exact(previous_path)
+		var previous_bytes: PackedByteArray = previous_read.get("bytes", PackedByteArray())
+		if not bool(previous_read.get("ok", false)) or _sha256_bytes(previous_bytes) != previous_hash or not _is_valid_job_manifest_bytes(previous_bytes):
+			return false
+	if not _remove_manifest_artifact(temporary_path):
+		return false
+	if not _remove_manifest_artifact(previous_path):
+		return false
+	return _remove_manifest_artifact(journal_path)
+
+func _remove_manifest_artifact(path: String) -> bool:
+	var state = _manifest_path_state(path)
+	if state == "absent":
+		return true
+	if state != "present" or DirAccess.remove_absolute(path) != OK:
+		return false
+	return _manifest_path_state(path) == "absent"
+
+func _manifest_path_state(path: String) -> String:
+	if not path.is_absolute_path() or path.get_file() == "" or _path_has_symlink_component(path.get_base_dir()):
+		return "unknown"
+	var parent_path = path.get_base_dir()
+	var parent = DirAccess.open(parent_path)
+	if parent == null:
+		if not DirAccess.dir_exists_absolute(parent_path) and not FileAccess.file_exists(parent_path) and not _path_has_symlink_component(parent_path):
+			return "absent"
+		return "unknown"
+	parent.include_hidden = true
+	if parent.list_dir_begin() != OK:
+		return "unknown"
+	var exact_entry = ""
+	var case_alias_exists = false
+	var basename = path.get_file()
+	while true:
+		var entry = parent.get_next()
+		if entry == "":
+			break
+		if entry == basename:
+			exact_entry = entry
+		elif entry.nocasecmp_to(basename) == 0:
+			case_alias_exists = true
+	parent.list_dir_end()
+	if exact_entry != "":
+		if parent.is_link(exact_entry):
+			return "unknown"
+		return "present"
+	if case_alias_exists or parent.is_link(basename) or DirAccess.dir_exists_absolute(path) or FileAccess.file_exists(path):
+		return "unknown"
+	return "absent"
+
+func _read_file_bytes_exact(path: String) -> Dictionary:
+	if _manifest_path_state(path) != "present":
+		return {"ok": false}
+	var file = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"ok": false}
+	var expected_length = int(file.get_length())
+	var bytes = file.get_buffer(expected_length)
+	var read_error = file.get_error()
+	var exact_length = bytes.size() == expected_length and int(file.get_length()) == expected_length
+	file.close()
+	return {"ok": read_error == OK and exact_length, "bytes": bytes}
+
+func _write_new_file_exact(path: String, bytes: PackedByteArray) -> bool:
+	if _manifest_path_state(path) != "absent":
+		return false
+	var file = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_buffer(bytes)
+	var store_error = file.get_error()
+	file.flush()
+	var flush_error = file.get_error()
+	file.close()
+	if store_error != OK or flush_error != OK:
+		_remove_manifest_artifact(path)
+		return false
+	var readback = _read_file_bytes_exact(path)
+	if not bool(readback.get("ok", false)) or readback.get("bytes", PackedByteArray()) != bytes:
+		_remove_manifest_artifact(path)
+		return false
+	return true
+
+func _is_valid_job_manifest_bytes(bytes: PackedByteArray) -> bool:
+	var value: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+	if typeof(value) != TYPE_DICTIONARY:
+		return false
+	var manifest: Dictionary = value
+	return _is_safe_job_id(String(manifest.get("job_id", ""))) and _is_safe_export_id(String(manifest.get("export_id", ""))) and String(manifest.get("resume_binding", "")) != ""
+
+func _is_sha256_hex(value: String) -> bool:
+	return value.length() == 64 and value.is_valid_hex_number(false)
+
+func _sha256_bytes(bytes: PackedByteArray) -> String:
+	var hash = HashingContext.new()
+	hash.start(HashingContext.HASH_SHA256)
+	hash.update(bytes)
+	return hash.finish().hex_encode()
+
+func _job_manifest_previous_path(path: String) -> String:
+	return path + ".previous"
+
+func _job_manifest_journal_path(path: String) -> String:
+	return path + ".replace-journal"
 
 func _segment_is_reusable(segment_path: String, manifest_path: String, expected: Dictionary) -> bool:
 	if _path_has_symlink_component(segment_path) or _path_has_symlink_component(manifest_path):
