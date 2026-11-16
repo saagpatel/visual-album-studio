@@ -746,6 +746,12 @@
 - A compiled Godot 4.4 PCK probe verified the exporter fingerprints the compiled resource named by its remap; changing the script changed the fingerprint.
 - Next: review and verify the recovery contract, run applicable repository acceptance gates, and retain the STOP until their requirements are satisfied.
 
+### Local gate follow-up — 2026-11-16
+- The documented Phase 1 acceptance command passed locally: 78 unit tests, 73 integration tests, the real 10-second product export and deterministic rerun, and the resume and SQLite recovery fixtures. The 10-minute and two-hour export cases remain simulated.
+- The first strict verification attempt failed the Python dependency audit on the isolated environment's pip 24.0 and setuptools 79.0.1. After upgrading those disposable environment tools to pip 26.3 and setuptools 84.2.1, the unchanged strict verification command passed, including the real 4K acceptance, unit/integration, dependency audit, and repository hygiene checks. The failed attempt remains part of this record.
+- Both runs used checksum-verified Godot 4.4 and PATH FFmpeg 9.0.2, the documented fallback when the managed FFmpeg is absent; they do not establish acceptance with pinned FFmpeg 8.0.1. The scoped synthetic Keychain entry was absent after each run. A crashed export still needs supervised lock reconciliation.
+- The earlier STOP and its evidence are retained above as historical findings. These local results do not establish hosted CI or signed review.
+
 ## Assumptions made (append-only)
 - ASM-200: Python harness remains temporarily as non-gating support while product-path gates are migrated to Godot.
 - ASM-201: Phase 5 and Phase 6 may be provisionally marked `PENDING_LIVE_VALIDATION` when live API validation is unavailable.

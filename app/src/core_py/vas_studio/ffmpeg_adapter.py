@@ -1,5 +1,6 @@
 import shlex
 import subprocess  # nosec B404
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Iterable, Optional
@@ -20,23 +21,61 @@ class FFmpegAdapter:
 
     def run(self, args: Iterable[str], on_progress: Optional[Callable[[Dict[str, str]], None]] = None) -> None:
         cmd = [self.ffmpeg_bin, *args, "-progress", "pipe:1", "-nostats", "-hide_banner"]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)  # nosec B603
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace"
+        )  # nosec B603
         if proc.stdout is None:
             proc.terminate()
             raise VasError("E_FFMPEG_FAILED", "ffmpeg progress stream unavailable", recoverable=True)
 
-        progress: Dict[str, str] = {}
-        for line in proc.stdout:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            progress[k] = v
-            if on_progress:
-                on_progress(progress)
+        # Drain stderr while stdout is consumed below. FFmpeg can fill either
+        # pipe independently; waiting for stdout EOF before reading stderr can
+        # deadlock when diagnostics exceed the OS pipe buffer.
+        stderr_tail = ""
 
-        stderr = proc.stderr.read() if proc.stderr else ""
+        def drain_stderr() -> None:
+            nonlocal stderr_tail
+            if proc.stderr is None:
+                return
+            while True:
+                chunk = proc.stderr.read(4096)
+                if not chunk:
+                    return
+                stderr_tail = (stderr_tail + chunk)[-2000:]
+
+        stderr_reader = threading.Thread(target=drain_stderr, name="ffmpeg-stderr", daemon=True)
+        stderr_reader.start()
+
+        progress: Dict[str, str] = {}
+        try:
+            for line in proc.stdout:
+                line = line.strip()
+                if not line or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                progress[k] = v
+                if on_progress:
+                    on_progress(progress)
+        except BaseException:
+            # A caller callback can fail while FFmpeg is still running. Stop
+            # the owned process and let the stderr reader drain to EOF before
+            # propagating the original exception.
+            if proc.poll() is None:
+                try:
+                    proc.terminate()
+                except ProcessLookupError:
+                    pass
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            stderr_reader.join()
+            raise
+
         rc = proc.wait()
+        stderr_reader.join()
+        stderr = stderr_tail
         if rc != 0:
             raise VasError(
                 code="E_FFMPEG_FAILED",
