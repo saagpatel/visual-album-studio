@@ -152,7 +152,7 @@ func _run() -> int:
 		var root_dir := DirAccess.open(fixture_root)
 		if root_dir == null:
 			return _fail("could not inspect the supplied fixture directory")
-			
+
 		root_dir.list_dir_begin()
 		var first_entry := root_dir.get_next()
 		var empty := first_entry == ""
@@ -597,4 +597,3 @@ func _assert(condition: bool, message: String) -> bool:
 func _fail(message: String) -> int:
 	push_error("[FAIL] " + message)
 	return 1
-
