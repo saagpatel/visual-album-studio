@@ -749,8 +749,8 @@ func _resume_binding(
 	duration_frames: int,
 	segments: Array
 ) -> String:
-	var exporter_source_hash = _hash_file("res://src/core/export_service.gd")
-	var ffmpeg_adapter_source_hash = _hash_file("res://src/adapters/ffmpeg_adapter.gd")
+	var exporter_source_hash = _renderer_resource_hash("res://src/core/export_service.gd")
+	var ffmpeg_adapter_source_hash = _renderer_resource_hash("res://src/adapters/ffmpeg_adapter.gd")
 	var ffmpeg_build_hash = _ffmpeg_build_hash()
 	var ffmpeg_version = ffmpeg.ffmpeg_version()
 	var godot_version = _godot_version_string()
@@ -777,6 +777,28 @@ func _resume_binding(
 		"ffmpeg_adapter_sha256": ffmpeg_adapter_source_hash,
 	}
 	return _sha256_text(JSON.stringify(_canonicalize(snapshot)))
+
+func _renderer_resource_hash(source_path: String) -> String:
+	# Compiled Godot exports remap `.gd` resources to `.gdc` and omit source.
+	# Follow that mapping when present so the resume binding fingerprints the
+	# executable script bytes, not a stale source copy shipped alongside them.
+	var remap_path = source_path + ".remap"
+	if FileAccess.file_exists(remap_path):
+		var remap := ConfigFile.new()
+		if remap.load(remap_path) != OK:
+			return ""
+		var runtime_path = String(remap.get_value("remap", "path", ""))
+		if runtime_path != "":
+			if not runtime_path.begins_with("res://"):
+				return ""
+			var runtime_hash = _hash_file(runtime_path)
+			return "compiled:" + runtime_hash if runtime_hash != "" else ""
+		return ""
+
+	var source_hash = _hash_file(source_path)
+	if source_hash != "":
+		return "source:" + source_hash
+	return ""
 
 func _canonicalize(value: Variant) -> Variant:
 	if typeof(value) == TYPE_DICTIONARY:
