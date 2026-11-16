@@ -8,6 +8,7 @@ var paths: Dictionary
 var ffmpeg
 var asset_service
 var _atomic_write_after_stage: Callable
+var _symlink_inspection_supported_override: Variant = null
 
 func _init(p_db = null, p_paths: Dictionary = {}, p_ffmpeg = null, p_asset_service = null) -> void:
 	db = p_db
@@ -873,17 +874,77 @@ func _matches_id(value: String, prefix: String) -> bool:
 	return true
 
 func _path_has_symlink_component(path: String) -> bool:
-	var current = path.simplify_path()
-	while current != "" and current != ".":
-		var output: Array = []
-		var code = OS.execute("/usr/bin/test", PackedStringArray(["-L", current]), output, true)
-		if code == 0:
+	if not _symlink_inspection_supported():
+		return true
+	if path.strip_edges() == "":
+		return true
+	var raw_path = path
+	if OS.get_name() == "Windows":
+		raw_path = raw_path.replace("\\", "/")
+	for component in raw_path.split("/", false):
+		if component == "..":
 			return true
-		var parent = current.get_base_dir()
-		if parent == current or parent == "":
-			break
-		current = parent
+	var absolute_path = raw_path.simplify_path()
+	if absolute_path.begins_with("res://") or absolute_path.begins_with("user://"):
+		absolute_path = ProjectSettings.globalize_path(absolute_path).simplify_path()
+	elif not absolute_path.is_absolute_path():
+		var cwd = DirAccess.open(".")
+		if cwd == null:
+			return true
+		absolute_path = cwd.get_current_dir().path_join(absolute_path).simplify_path()
+
+	var current = ""
+	var remainder = ""
+	if absolute_path.begins_with("//"):
+		return true
+	if absolute_path.begins_with("/"):
+		current = "/"
+		remainder = absolute_path.trim_prefix("/")
+	elif absolute_path.length() >= 3 and absolute_path.substr(1, 2) == ":/":
+		current = absolute_path.substr(0, 3)
+		remainder = absolute_path.substr(3)
+	else:
+		return true
+	for component in remainder.split("/", false):
+		var parent = DirAccess.open(current)
+		if parent == null:
+			return true
+		parent.include_hidden = true
+		if parent.list_dir_begin() != OK:
+			return true
+		var existing_component = ""
+		var case_alias_exists = false
+		while true:
+			var entry = parent.get_next()
+			if entry == "":
+				break
+			if entry == component:
+				existing_component = entry
+			elif entry.nocasecmp_to(component) == 0:
+				case_alias_exists = true
+		parent.list_dir_end()
+		if existing_component == "":
+			if case_alias_exists:
+				# The filesystem's case behavior is ambiguous; don't treat an alias as absent.
+				return true
+			var requested_path = current.path_join(component)
+			if parent.is_link(component) or DirAccess.dir_exists_absolute(requested_path) or FileAccess.file_exists(requested_path):
+				# The path resolves despite not matching an enumerated name; inspection is ambiguous.
+				return true
+			# The parent was opened and fully enumerated, confirming this is a prospective child.
+			return false
+		if parent.is_link(existing_component):
+			return true
+		current = current.path_join(existing_component)
+		if not DirAccess.dir_exists_absolute(current) and not FileAccess.file_exists(current):
+			# An enumerated entry must remain observable before we trust the next component.
+			return true
 	return false
+
+func _symlink_inspection_supported() -> bool:
+	if _symlink_inspection_supported_override != null:
+		return bool(_symlink_inspection_supported_override)
+	return OS.get_name() in ["macOS", "Linux", "Windows"]
 
 func _hash_file(path: String) -> String:
 	var file = FileAccess.open(path, FileAccess.READ)

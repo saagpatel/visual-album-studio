@@ -362,8 +362,10 @@ func _run() -> int:
 		return 1
 	if not _run_post_render_failure_controls(fixture_root, project, analysis, template):
 		return 1
+	if not _run_symlink_guard_controls(fixture_root, project, analysis, template):
+		return 1
 
-	print("Phase 1 resume integration passed: interruption, same-job recovery, input mismatch, post-render failures, and segment tampering")
+	print("Phase 1 resume integration passed: interruption, same-job recovery, input mismatch, post-render failures, symlink guards, and segment tampering")
 	return 0
 
 func _run_post_render_failure_controls(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary) -> bool:
@@ -457,6 +459,100 @@ func _run_post_render_failure_controls(fixture_root: String, project: Dictionary
 		print(bundle_resume)
 		return false
 	if not _assert(bundle_ffmpeg.segment_encodes == bundle_segment_calls, "resume after bundle staging failure must reuse every completed segment"):
+		return false
+	return true
+
+func _run_symlink_guard_controls(fixture_root: String, project: Dictionary, analysis: Dictionary, template: Dictionary) -> bool:
+	var paths := {
+		"root": fixture_root,
+		"out_dir": fixture_root.path_join("out"),
+		"tmp_dir": fixture_root.path_join("tmp"),
+		"exports_dir": fixture_root.path_join("exports"),
+	}
+	var ffmpeg := FixtureFfmpeg.new()
+	var exporter := ExportService.new(FixtureDb.new(), paths, ffmpeg, FixtureAssets.new())
+	var interrupted := exporter.export_project(project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(interrupted.get("error", "")) == "E_FFMPEG_FAILED", "symlink guard control must create an interrupted synthetic job"):
+		print(interrupted)
+		return false
+	var job_id := String(interrupted.get("job_id", ""))
+	var workspace := fixture_root.path_join("tmp/jobs").path_join(job_id)
+	var canary_path := fixture_root.path_join("tmp/symlink_guard/owned-output.bin")
+	DirAccess.make_dir_recursive_absolute(canary_path.get_base_dir())
+	var canary := FileAccess.open(canary_path, FileAccess.WRITE)
+	if not _assert(canary != null, "symlink guard fixture must create an in-root canary file"):
+		return false
+	var canary_bytes := "owned symlink target sentinel\n"
+	canary.store_string(canary_bytes)
+	canary.close()
+	if not _assert(not exporter._path_has_symlink_component(canary_path), "guard must accept an ordinary in-root regular file on a supported inspector"):
+		return false
+	if not _assert(not exporter._path_has_symlink_component(fixture_root.path_join("tmp/symlink_guard/not-created/child")), "guard must allow a prospective missing child after successful parent inspection"):
+		return false
+	exporter._symlink_inspection_supported_override = false
+	var unavailable_fails_closed := exporter._path_has_symlink_component(canary_path)
+	exporter._symlink_inspection_supported_override = null
+	if not _assert(unavailable_fails_closed, "guard must fail closed when symlink inspection is unavailable"):
+		return false
+	var final_video_link := workspace.path_join("final/video.mp4")
+	var output_link_parent := DirAccess.open(final_video_link.get_base_dir())
+	var link_code := FAILED
+	if output_link_parent != null:
+		link_code = output_link_parent.create_link(canary_path, final_video_link)
+	if link_code != OK:
+		if OS.get_name() == "Windows":
+			print("[SKIP] symlink refusal cases unavailable without Windows Developer Mode or elevated privileges; error=%d" % link_code)
+			return true
+		push_error("[FAIL] could not create owned output symlink to in-root canary; error=%d" % link_code)
+		return false
+	print("[PASS] symlink guard fixture links an output file only to its in-root canary")
+	var calls_before_output_link := ffmpeg.calls.size()
+	var output_link_resume := exporter.resume_export(job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(output_link_resume.get("error", "")) == "E_RESUME_UNSAFE_PATH", "resume must refuse a symlinked output file"):
+		print(output_link_resume)
+		return false
+	if not _assert(ffmpeg.calls.size() == calls_before_output_link, "symlinked output file must be rejected before FFmpeg is called"):
+		return false
+	if not _assert(FileAccess.get_file_as_string(canary_path) == canary_bytes, "refusing a symlinked output must leave its in-root target unchanged"):
+		return false
+	if not _assert(DirAccess.remove_absolute(final_video_link) == OK, "test must remove its owned output symlink before the segment check"):
+		return false
+
+	var segment_dir := workspace.path_join("segments/001")
+	var frames_dir := segment_dir.path_join("frames")
+	var frame_path := frames_dir.path_join("frame_000000.png")
+	if FileAccess.file_exists(frame_path) and not _assert(DirAccess.remove_absolute(frame_path) == OK, "test must remove only the failed segment's synthetic frame"):
+		return false
+	if DirAccess.dir_exists_absolute(frames_dir) and not _assert(DirAccess.remove_absolute(frames_dir) == OK, "test must remove the emptied failed segment frames directory"):
+		return false
+	if DirAccess.dir_exists_absolute(segment_dir) and not _assert(DirAccess.remove_absolute(segment_dir) == OK, "test must remove the emptied failed segment directory"):
+		return false
+	var segment_target := fixture_root.path_join("tmp/symlink_guard/owned-segment-directory")
+	DirAccess.make_dir_recursive_absolute(segment_target)
+	var segment_marker := FileAccess.open(segment_target.path_join("sentinel.txt"), FileAccess.WRITE)
+	if not _assert(segment_marker != null, "symlink guard fixture must create an in-root segment target"):
+		return false
+	segment_marker.store_string("owned segment target sentinel\n")
+	segment_marker.close()
+	var segment_link_parent := DirAccess.open(segment_dir.get_base_dir())
+	link_code = FAILED
+	if segment_link_parent != null:
+		link_code = segment_link_parent.create_link(segment_target, segment_dir)
+	if link_code != OK:
+		if OS.get_name() == "Windows":
+			print("[SKIP] symlink refusal cases unavailable without Windows Developer Mode or elevated privileges; error=%d" % link_code)
+			return true
+		push_error("[FAIL] could not create owned segment symlink to in-root target; error=%d" % link_code)
+		return false
+	print("[PASS] symlink guard fixture links a segment directory only to its in-root target")
+	var calls_before_segment_link := ffmpeg.calls.size()
+	var segment_link_resume := exporter.resume_export(job_id, project, "fixture-audio", analysis, template, false, false)
+	if not _assert(String(segment_link_resume.get("error", "")) == "E_RESUME_UNSAFE_PATH", "resume must refuse a symlinked segment directory"):
+		print(segment_link_resume)
+		return false
+	if not _assert(ffmpeg.calls.size() == calls_before_segment_link, "symlinked segment directory must be rejected before FFmpeg is called"):
+		return false
+	if not _assert(FileAccess.get_file_as_string(segment_target.path_join("sentinel.txt")) == "owned segment target sentinel\n", "refusing a symlinked segment must leave its in-root target unchanged"):
 		return false
 	return true
 
